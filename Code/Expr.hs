@@ -46,13 +46,13 @@ pExpr = do t <- pTerm
               return (Add t e)
             ||| do symbol "-"
                    e <- pExpr
-                   error "Subtraction not yet implemented!" 
+                   return (Sub t e)
                  ||| return t
 
 pFactor :: Parser Expr
 pFactor = do d <- integer
              return (Val d)
-           ||| do v <- letter
+           ||| do v <- identifier
                   error "Variables not yet implemented" 
                 ||| do symbol "("
                        e <- pExpr
@@ -63,9 +63,9 @@ pTerm :: Parser Expr
 pTerm = do f <- pFactor
            do symbol "*"
               t <- pTerm
-              error "Multiplication not yet implemented" 
+              return (Mul f t)
             ||| do symbol "/"
                    t <- pTerm
-                   error "Division not yet implemented" 
+                   return (Div f t)
                  ||| return f
 

@@ -20,14 +20,12 @@ dropVar = undefined
 
 process :: State -> Command -> IO ()
 process st (Set var e) 
-     = do let st' = initState
+     = do let st' = undefined
           -- st' should include the variable set to the result of evaluating e
-          putStrLn "in Set"
           repl st'
 process st (Print e) 
-     = do let st' = initState
+     = do let st' = undefined
           -- Print the result of evaluation
-          putStrLn "in Print"
           repl st'
 
 -- Read, Eval, Print Loop
