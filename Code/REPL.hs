@@ -22,10 +22,14 @@ dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
 dropVar name vars = [(var, val) | (var, val) <- vars, var /= name]
 
 process :: State -> Command -> IO ()
-process st (Set var e) 
-     = do let st' = undefined
-          -- st' should include the variable set to the result of evaluating e
-          repl st'
+process st (Set var e) =
+  do
+    case eval (vars st) e of
+      Nothing -> repl st
+      Just eval_res -> do
+        let st' = st {vars = updateVars var eval_res (vars st)}
+        -- st' should include the variable set to the result of evaluating e
+        repl st'
 process st (Print e) 
      = do let st' = undefined
           -- Print the result of evaluation
@@ -39,7 +43,7 @@ process st Quit
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: State -> IO ()
-repl st = do putStr ("> ")
+repl st = do putStr ("> ") -- debug: add print (vars st) above to see the variable list
              inp <- getLine
              case parse pCommand inp of
                   [(cmd, "")] -> -- Must parse entire input
