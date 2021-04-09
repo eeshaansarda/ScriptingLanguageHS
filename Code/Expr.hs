@@ -14,6 +14,7 @@ data Expr = Add Expr Expr
           | Div Expr Expr
           | ToString Expr
           | Val Int
+          | Var Name
   deriving Show
 
 -- These are the REPL commands
@@ -24,7 +25,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
 eval :: [(Name, Int)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Int -- Result (if no errors such as missing variables)
-eval vars (Val x) = Just x -- for values, just give the value directly
+eval vars (Val x)                                  = Just x -- for values, just give the value directly
 eval vars (Add x y) | isNothing x' || isNothing y' = Nothing
                     | otherwise                    = Just ((fromJust x') + (fromJust y'))
                     where x' = eval vars x
@@ -41,7 +42,8 @@ eval vars (Div x y) | isNothing x' || isNothing y' = Nothing
                     | otherwise                    = Just ((fromJust x') `div` (fromJust y'))
                     where x' = eval vars x
                           y' = eval vars y
-eval vars (ToString x) = Nothing
+eval vars (ToString x)                             = Nothing
+eval vars (Var x)                                  = lookup x vars 
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
@@ -70,7 +72,7 @@ pFactor :: Parser Expr
 pFactor = do d <- integer
              return (Val d)
            ||| do v <- identifier
-                  error "Variables not yet implemented" 
+                  return (Var v)
                 ||| do symbol "("
                        e <- pExpr
                        symbol ")"
