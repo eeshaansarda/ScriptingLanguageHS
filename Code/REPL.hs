@@ -3,7 +3,7 @@ module REPL where
 import Expr
 import Parsing
 
-data State = State { vars :: [(Name, Int)] }
+data State = State {vars :: [(Name, Value)]}
 
 initState :: State
 initState = State []
@@ -11,22 +11,31 @@ initState = State []
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
 -- If it already exists, remove the old value
-updateVars :: Name -> Int -> [(Name, Int)] -> [(Name, Int)]
-updateVars = undefined
+updateVars :: Name -> Value -> [(Name, Value)] -> [(Name, Value)]
+updateVars name value [] = [(name, value)]
+updateVars name value ((var, val) : vars)
+  | name == var = (var, value) : vars
+  | otherwise = (var, val) : updateVars name value vars
 
 -- Return a new set of variables with the given name removed
-dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
-dropVar = undefined
+dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
+dropVar name vars = [(var, val) | (var, val) <- vars, var /= name]
 
 process :: State -> Command -> IO ()
-process st (Set var e) 
-     = do let st' = undefined
-          -- st' should include the variable set to the result of evaluating e
-          repl st'
+process st (Set var e) =
+  do
+    case eval (vars st) e of
+      Nothing -> repl st
+      Just eval_res -> do
+        let st' = st {vars = updateVars var eval_res (vars st)}
+        -- st' should include the variable set to the result of evaluating e
+        repl st'
 process st (Print e) 
      = do let st' = undefined
           -- Print the result of evaluation
           repl st'
+process st Quit
+     = putStrLn "Bye"
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -34,7 +43,8 @@ process st (Print e)
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: State -> IO ()
-repl st = do putStr ("> ")
+repl st = do print (vars st) -- TODO: debug message, to be removed in the future
+             putStr ("> ")
              inp <- getLine
              case parse pCommand inp of
                   [(cmd, "")] -> -- Must parse entire input
