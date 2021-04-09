@@ -8,7 +8,7 @@ type Name = String
 -- values. You will need to add other operations, and variables
 data Expr = Add Expr Expr
           | ToString Expr
-          | Val Int
+          | Val Value
   deriving Show
 
 -- These are the REPL commands
@@ -16,9 +16,12 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
   deriving Show
 
-eval :: [(Name, Int)] -> -- Variable name to value mapping
+data Value = IntVal Int | StrVal String
+  deriving Show
+
+eval :: [(Name, Value)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
-        Maybe Int -- Result (if no errors such as missing variables)
+        Maybe Value -- Result (if no errors such as missing variables)
 eval vars (Val x) = Just x -- for values, just give the value directly
 eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
 eval vars (ToString x) = Nothing
@@ -48,7 +51,7 @@ pExpr = do t <- pTerm
 
 pFactor :: Parser Expr
 pFactor = do d <- digit
-             return (Val (digitToInt d))
+             return (Val (IntVal (digitToInt d)))
            ||| do v <- letter
                   error "Variables not yet implemented" 
                 ||| do char '('
