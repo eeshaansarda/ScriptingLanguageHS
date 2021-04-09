@@ -32,26 +32,38 @@ eval :: [(Name, Value)] -> -- Variable name to value mapping
 eval vars (Val x)                                                    = Just (IntVal x) -- for values, just give the value directly
 eval vars (Add x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
                     | otherwise                                      = Just (IntVal (a + b))
-                    where x'                = eval vars x
-                          y'                = eval vars y
-                          getVal val        = case val of Just (IntVal i) -> Just i
-                                                          _               -> Nothing
-                          a                 = fromJust (getVal x')
-                          b                 = fromJust (getVal y')
--- eval vars (Sub x y) | isNothing x' || isNothing y' = Nothing
---                     | otherwise                    = Just ((fromJust x') - (fromJust y'))
---                     where x' = eval vars x
---                           y' = eval vars y
--- eval vars (Mul x y) | isNothing x' || isNothing y' = Nothing
---                     | otherwise                    = Just ((fromJust x') * (fromJust y'))
---                     where x' = eval vars x
---                           y' = eval vars y
--- eval vars (Div x y) | isNothing x' || isNothing y' = Nothing
---                     | otherwise                    = Just ((fromJust x') `div` (fromJust y'))
---                     where x' = eval vars x
---                           y' = eval vars y
-eval vars (ToString x)                             = Nothing
-eval vars (Var x)                                  = lookup x vars
+                    where x'         = eval vars x
+                          y'         = eval vars y
+                          getVal val = case val of Just (IntVal i) -> Just i
+                                                   _               -> Nothing
+                          a          = fromJust (getVal x')
+                          b          = fromJust (getVal y')
+eval vars (Sub x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
+                    | otherwise                                      = Just (IntVal (a - b))
+                    where x'         = eval vars x
+                          y'         = eval vars y
+                          getVal val = case val of Just (IntVal i) -> Just i
+                                                   _               -> Nothing
+                          a          = fromJust (getVal x')
+                          b          = fromJust (getVal y')
+eval vars (Mul x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
+                    | otherwise                                      = Just (IntVal (a * b))
+                    where x'         = eval vars x
+                          y'         = eval vars y
+                          getVal val = case val of Just (IntVal i) -> Just i
+                                                   _               -> Nothing
+                          a          = fromJust (getVal x')
+                          b          = fromJust (getVal y')
+eval vars (Div x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
+                    | otherwise                                      = Just (IntVal (a `div` b))
+                    where x'         = eval vars x
+                          y'         = eval vars y
+                          getVal val = case val of Just (IntVal i) -> Just i
+                                                   _               -> Nothing
+                          a          = fromJust (getVal x')
+                          b          = fromJust (getVal y')
+eval vars (ToString x)                                               = Nothing
+eval vars (Var x)                                                    = lookup x vars
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
