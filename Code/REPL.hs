@@ -30,6 +30,8 @@ process st (Print e)
      = do let st' = undefined
           -- Print the result of evaluation
           repl st'
+process st Quit
+     = putStrLn "Bye"
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
