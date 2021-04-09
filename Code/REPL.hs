@@ -43,7 +43,8 @@ process st Quit
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: State -> IO ()
-repl st = do putStr ("> ") -- debug: add print (vars st) above to see the variable list
+repl st = do print (vars st) -- TODO: debug message, to be removed in the future
+             putStr ("> ")
              inp <- getLine
              case parse pCommand inp of
                   [(cmd, "")] -> -- Must parse entire input
