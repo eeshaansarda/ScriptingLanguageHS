@@ -2,6 +2,8 @@ module Expr where
 
 import Parsing
 
+import Data.Maybe
+
 type Name = String
 
 -- At first, 'Expr' contains only addition, conversion to strings, and integer
@@ -23,7 +25,22 @@ eval :: [(Name, Int)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Int -- Result (if no errors such as missing variables)
 eval vars (Val x) = Just x -- for values, just give the value directly
-eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
+eval vars (Add x y) | isNothing x' || isNothing y' = Nothing
+                    | otherwise                    = Just ((fromJust x') + (fromJust y'))
+                    where x' = eval vars x
+                          y' = eval vars y
+eval vars (Sub x y) | isNothing x' || isNothing y' = Nothing
+                    | otherwise                    = Just ((fromJust x') - (fromJust y'))
+                    where x' = eval vars x
+                          y' = eval vars y
+eval vars (Mul x y) | isNothing x' || isNothing y' = Nothing
+                    | otherwise                    = Just ((fromJust x') * (fromJust y'))
+                    where x' = eval vars x
+                          y' = eval vars y
+eval vars (Div x y) | isNothing x' || isNothing y' = Nothing
+                    | otherwise                    = Just ((fromJust x') `div` (fromJust y'))
+                    where x' = eval vars x
+                          y' = eval vars y
 eval vars (ToString x) = Nothing
 
 digitToInt :: Char -> Int
