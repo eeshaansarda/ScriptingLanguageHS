@@ -3,7 +3,7 @@ module REPL where
 import Expr
 import Parsing
 
-data State = State { vars :: [(Name, Int)] }
+data State = State {vars :: [(Name, Value)]}
 
 initState :: State
 initState = State []
@@ -11,12 +11,15 @@ initState = State []
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
 -- If it already exists, remove the old value
-updateVars :: Name -> Int -> [(Name, Int)] -> [(Name, Int)]
-updateVars = undefined
+updateVars :: Name -> Value -> [(Name, Value)] -> [(Name, Value)]
+updateVars name value [] = [(name, value)]
+updateVars name value ((var, val) : vars)
+  | name == var = (var, value) : vars
+  | otherwise = (var, val) : updateVars name value vars
 
 -- Return a new set of variables with the given name removed
-dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
-dropVar = undefined
+dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
+dropVar name vars = [(var, val) | (var, val) <- vars, var /= name]
 
 process :: State -> Command -> IO ()
 process st (Set var e) 
