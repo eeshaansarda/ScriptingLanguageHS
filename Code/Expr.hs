@@ -15,6 +15,8 @@ data Expr = Add Expr Expr
           | ToString Expr
           | Val Int
           | Var Name
+          -- | Val String
+          -- | Concat Expr Expr
   deriving Show
 
 -- These are the REPL commands
@@ -81,14 +83,16 @@ pCommand = do t <- identifier
                         return Quit
 
 pExpr :: Parser Expr
-pExpr = do t <- pTerm
-           do symbol "+"
-              e <- pExpr
-              return (Add t e)
-            ||| do symbol "-"
-                   e <- pExpr
-                   return (Sub t e)
-                 ||| return t
+pExpr = (do t <- pTerm
+            do symbol "+"
+               e <- pExpr
+               return (Add t e)
+             ||| do symbol "-"
+                    e <- pExpr
+                    return (Sub t e)
+                  ||| return t)
+        ||| do s <- pStringExpr
+               return s
 
 pFactor :: Parser Expr
 pFactor = do d <- integer
@@ -110,3 +114,19 @@ pTerm = do f <- pFactor
                    return (Div f t)
                  ||| return f
 
+-- What happens when it doesnt find "
+-- Maybe it looks till the end of file
+-- and then results in an error?
+-- Or can add a functionality for one line strings
+pString :: Parser Expr
+pString = do char '"'
+             str <- many (sat (\x -> x /= '"'))
+             char '"'
+             return (Val str)
+
+pStringExpr :: Parser Expr
+pStringExpr = do s <- pString
+                 do symbol "++"
+                    s2 <- pStringExpr
+                    return (Concat pString pStringExpr)
+                  ||| return s
