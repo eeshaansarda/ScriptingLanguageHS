@@ -67,7 +67,15 @@ eval vars (Div x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
                                                    _               -> Nothing
                           a          = fromJust (getVal x')
                           b          = fromJust (getVal y')
-eval vars (ToString x)                                               = Nothing
+eval vars (Concat x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
+                       | otherwise                                      = Just (StrVal (a ++ b))
+                       where x'         = eval vars x
+                             y'         = eval vars y
+                             getVal val = case val of Just (StrVal i) -> Just i
+                                                      _               -> Nothing
+                             a          = fromJust (getVal x')
+                             b          = fromJust (getVal y')
+eval vars (ToString x)                                               = Just (StrVal (show x))
 eval vars (Var x)                                                    = lookup x vars
 
 digitToInt :: Char -> Int
