@@ -13,10 +13,8 @@ data Expr = Add Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
           | ToString Expr
-          | Val Int
-          -- | Value
+          | Val Value
           | Var Name
-          | Val' String
           | Concat Expr Expr
   deriving Show
 
@@ -34,50 +32,22 @@ data Value = IntVal Int | StrVal String
 eval :: [(Name, Value)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
-eval vars (Val x)                                                    = Just (IntVal x) -- for values, just give the value directly
-eval vars (Val' x)                                                   = Just (StrVal x) -- for values, just give the value directly
-eval vars (Add x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
-                    | otherwise                                      = Just (IntVal (a + b))
-                    where x'         = eval vars x
-                          y'         = eval vars y
-                          getVal val = case val of Just (IntVal i) -> Just i
-                                                   _               -> Nothing
-                          a          = fromJust (getVal x')
-                          b          = fromJust (getVal y')
-eval vars (Sub x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
-                    | otherwise                                      = Just (IntVal (a - b))
-                    where x'         = eval vars x
-                          y'         = eval vars y
-                          getVal val = case val of Just (IntVal i) -> Just i
-                                                   _               -> Nothing
-                          a          = fromJust (getVal x')
-                          b          = fromJust (getVal y')
-eval vars (Mul x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
-                    | otherwise                                      = Just (IntVal (a * b))
-                    where x'         = eval vars x
-                          y'         = eval vars y
-                          getVal val = case val of Just (IntVal i) -> Just i
-                                                   _               -> Nothing
-                          a          = fromJust (getVal x')
-                          b          = fromJust (getVal y')
-eval vars (Div x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
-                    | otherwise                                      = Just (IntVal (a `div` b))
-                    where x'         = eval vars x
-                          y'         = eval vars y
-                          getVal val = case val of Just (IntVal i) -> Just i
-                                                   _               -> Nothing
-                          a          = fromJust (getVal x')
-                          b          = fromJust (getVal y')
-eval vars (Concat x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
-                       | otherwise                                      = Just (StrVal (a ++ b))
-                       where x'         = eval vars x
-                             y'         = eval vars y
-                             getVal val' = case val' of Just (StrVal i) -> Just i
-                                                        _               -> Nothing
-                             a          = fromJust (getVal x')
-                             b          = fromJust (getVal y')
-eval vars (ToString x)                                               = Just (StrVal (show x))
-eval vars (Var x)                                                    = lookup x vars
+eval vars (Val x) = Just x -- for values, just give the value directly
+eval vars (ToString x) = Just (StrVal (show x))
+eval vars (Var x) = lookup x vars
+eval vars (Concat x y) = case (eval vars x, eval vars y) of
+  (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
+  _ -> Nothing
+eval vars expr = case (eval vars x, eval vars y) of
+  (Just (IntVal i), Just (IntVal j)) -> Just (IntVal (func i j))
+  _ -> Nothing
+  where
+    (func, x, y) = case expr of
+      Add expr1 expr2 -> ((+), expr1, expr2)
+      Sub expr1 expr2 -> ((-), expr1, expr2)
+      Mul expr1 expr2 -> ((*), expr1, expr2)
+      Div expr1 expr2 -> (div, expr1, expr2)
+
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
@@ -108,7 +78,7 @@ pExpr = (do t <- pTerm
 
 pFactor :: Parser Expr
 pFactor = do d <- integer
-             return (Val d)
+             return (Val (IntVal d))
            ||| do v <- identifier
                   return (Var v)
                 ||| do symbol "("
@@ -134,7 +104,7 @@ pString :: Parser Expr
 pString = do char '"'
              str <- many (sat (\x -> x /= '"'))
              char '"'
-             return (Val' str)
+             return (Val (StrVal str))
 
 pStringExpr :: Parser Expr
 pStringExpr = do s <- pString
