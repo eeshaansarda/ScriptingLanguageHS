@@ -35,6 +35,7 @@ eval :: [(Name, Value)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
 eval vars (Val x)                                                    = Just (IntVal x) -- for values, just give the value directly
+eval vars (Val' x)                                                   = Just (StrVal x) -- for values, just give the value directly
 eval vars (Add x y) | isNothing (getVal x') || isNothing (getVal y') = Nothing
                     | otherwise                                      = Just (IntVal (a + b))
                     where x'         = eval vars x
@@ -71,8 +72,8 @@ eval vars (Concat x y) | isNothing (getVal x') || isNothing (getVal y') = Nothin
                        | otherwise                                      = Just (StrVal (a ++ b))
                        where x'         = eval vars x
                              y'         = eval vars y
-                             getVal val = case val of Just (StrVal i) -> Just i
-                                                      _               -> Nothing
+                             getVal val' = case val' of Just (StrVal i) -> Just i
+                                                        _               -> Nothing
                              a          = fromJust (getVal x')
                              b          = fromJust (getVal y')
 eval vars (ToString x)                                               = Just (StrVal (show x))
