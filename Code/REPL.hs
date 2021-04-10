@@ -35,9 +35,9 @@ process st (Set var e) =
 process st (Print e) =
   do
     case eval (vars st) e of
-      Nothing -> outputStrLn ("\nInvalid statement")
+      Nothing -> outputStrLn ("Invalid expression")
       Just eval_res -> do
-        outputStrLn ("\n" ++ show eval_res)
+        outputStrLn (show eval_res)
     -- Print the result of evaluation
     repl st
 process st Quit
@@ -49,7 +49,7 @@ process st Quit
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: State -> InputT IO ()
-repl st = do outputStrLn ("\n" ++ show (vars st) ++ "\n") -- TODO: debug message, to be removed in the future
+repl st = do outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug message, to be removed in the future
              inp <- getInputLine ("> ")
              -- inp <- getLine
              case inp of
