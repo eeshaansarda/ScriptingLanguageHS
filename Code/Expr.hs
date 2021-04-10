@@ -26,7 +26,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Quit          -- quit the program
   deriving Show
 
-data Value = IntVal Int | StrVal String
+data Value = IntVal Int | FltVal Float | StrVal String
   deriving Show
 
 eval :: [(Name, Value)] -> -- Variable name to value mapping
@@ -40,6 +40,7 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   _ -> Nothing
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (IntVal i), Just (IntVal j)) -> Just (IntVal (func i j))
+  (Just (FltVal i), Just (FltVal j)) -> Just (FltVal (func i j))
   _ -> Nothing
   where
     (func, x, y) = case expr of
@@ -77,14 +78,16 @@ pExpr = (do t <- pTerm
                return s
 
 pFactor :: Parser Expr
-pFactor = do d <- integer
-             return (Val (IntVal d))
-           ||| do v <- identifier
-                  return (Var v)
-                ||| do symbol "("
-                       e <- pExpr
-                       symbol ")"
-                       return e
+pFactor = do f <- float
+             return (Val (FltVal f))
+          ||| do d <- integer
+                 return (Val (IntVal d))
+              ||| do v <- identifier
+                     return (Var v)
+                  ||| do symbol "("
+                         e <- pExpr
+                         symbol ")"
+                         return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
@@ -102,7 +105,7 @@ pTerm = do f <- pFactor
 -- Or can add a functionality for one line strings
 pString :: Parser Expr
 pString = do char '"'
-             str <- many (sat (\x -> x /= '"'))
+             str <- many (sat (/= '"'))
              char '"'
              return (Val (StrVal str))
 

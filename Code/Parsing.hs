@@ -126,6 +126,12 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
+flt                           :: Parser Float
+flt                           =  do x <- int
+                                    char '.'
+                                    y <- nat
+                                    return (read (show x ++ "." ++ show y) :: Float)
+
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
                                     return ()
@@ -148,6 +154,9 @@ natural                       =  token nat
 
 integer                       :: Parser Int
 integer                       =  token int
+
+float                         :: Parser Float 
+float                         =  token flt
 
 symbol                        :: String -> Parser String
 symbol xs                     =  token (string xs)
