@@ -30,10 +30,14 @@ process st (Set var e) =
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
         repl st'
-process st (Print e) 
-     = do let st' = undefined
-          -- Print the result of evaluation
-          repl st'
+process st (Print e) =
+  do
+    case eval (vars st) e of
+      Nothing -> putStrLn ("\nInvalid statement")
+      Just eval_res -> do
+        putStrLn ("\n" ++ show eval_res)
+    -- Print the result of evaluation
+    repl st
 process st Quit
      = putStrLn "Bye"
 
@@ -43,7 +47,7 @@ process st Quit
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: State -> IO ()
-repl st = do print (vars st) -- TODO: debug message, to be removed in the future
+repl st = do putStrLn ("\n" ++ show (vars st) ++ "\n") -- TODO: debug message, to be removed in the future
              putStr ("> ")
              inp <- getLine
              case parse pCommand inp of
