@@ -1,5 +1,7 @@
 module REPL where
 
+import System.Console.Haskeline
+-- import Control.Monad.Trans
 import Expr
 import Parsing
 
@@ -21,7 +23,7 @@ updateVars name value ((var, val) : vars)
 dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
 dropVar name vars = [(var, val) | (var, val) <- vars, var /= name]
 
-process :: State -> Command -> IO ()
+process :: State -> Command -> InputT IO ()
 process st (Set var e) =
   do
     case eval (vars st) e of
@@ -33,25 +35,28 @@ process st (Set var e) =
 process st (Print e) =
   do
     case eval (vars st) e of
-      Nothing -> putStrLn ("\nInvalid statement")
+      Nothing -> outputStrLn ("\nInvalid statement")
       Just eval_res -> do
-        putStrLn ("\n" ++ show eval_res)
+        outputStrLn ("\n" ++ show eval_res)
     -- Print the result of evaluation
     repl st
 process st Quit
-     = putStrLn "Bye"
+     = outputStrLn "Bye"
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
 -- 'process' to process the command.
 -- 'process' will call 'repl' when done, so the system loops.
 
-repl :: State -> IO ()
-repl st = do putStrLn ("\n" ++ show (vars st) ++ "\n") -- TODO: debug message, to be removed in the future
-             putStr ("> ")
-             inp <- getLine
-             case parse pCommand inp of
-                  [(cmd, "")] -> -- Must parse entire input
-                          process st cmd
-                  _ -> do putStrLn "Parse error"
-                          repl st
+repl :: State -> InputT IO ()
+repl st = do outputStrLn ("\n" ++ show (vars st) ++ "\n") -- TODO: debug message, to be removed in the future
+             inp <- getInputLine ("> ")
+             -- inp <- getLine
+             case inp of
+                Nothing    -> return ()
+                Just input -> 
+                    case parse pCommand input of
+                        [(cmd, "")] -> -- Must parse entire input
+                                process st cmd
+                        _ -> do outputStrLn "Parse error"
+                                repl st
