@@ -14,10 +14,13 @@ data Expr = Add Expr Expr
           | Div Expr Expr
           | ToString Expr
           | Val Int
+          -- | Value
           | Var Name
-          -- | Val String
-          -- | Concat Expr Expr
+          | Val' String
+          | Concat Expr Expr
   deriving Show
+
+-- data StrExpr = V
 
 -- These are the REPL commands
 data Command = Set Name Expr -- assign an expression to a variable name
@@ -122,11 +125,11 @@ pString :: Parser Expr
 pString = do char '"'
              str <- many (sat (\x -> x /= '"'))
              char '"'
-             return (Val str)
+             return (Val' str)
 
 pStringExpr :: Parser Expr
 pStringExpr = do s <- pString
                  do symbol "++"
                     s2 <- pStringExpr
-                    return (Concat pString pStringExpr)
+                    return (Concat s s2)
                   ||| return s
