@@ -13,9 +13,13 @@ data Expr = Add Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
           | ToString Expr
+
           | Val Value
           | Var Name
+
           | Concat Expr Expr
+
+          | Compare Expr Expr
   deriving Show
 
 -- data StrExpr = V
@@ -26,7 +30,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Quit          -- quit the program
   deriving Show
 
-data Value = IntVal Int | FltVal Float | StrVal String
+data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool
   deriving Show
 
 eval :: [(Name, Value)] -> -- Variable name to value mapping
@@ -115,3 +119,64 @@ pStringExpr = do s <- pString
                     s2 <- pStringExpr
                     return (Concat s s2)
                   ||| return s
+
+-- Statement -> whileStmt | ifStmt | assignmentStmt | printStmt | quitStmt
+-- Statement -> whileStmt | ifStmt | assignmentStmt | functionCallStmt
+
+pStatement :: Parser Command
+pStatement = (do s <- pIfStmt
+                 return (s))
+             ||| (do s <- pWhileStmt
+                     return (s))
+             ||| (do s <- pAssignmentStmt
+                     return (s))
+             ||| (do s <- pPrintStmt
+                     return (s))
+             ||| (do s <- pQuitStmt
+                     return (s))
+
+pIfStmt :: Parser Command
+pIfStmt = do string "if"
+             space
+             expression <- pBoolExpr
+             string "then"
+             space
+             statement <- pStatement
+             do string "else"
+                eStatement <- pStatement
+                return (If expression statement eStatement)
+              ||| return (If expression statement Nothing)
+
+pWhileStmt :: Parser Command
+pWhileStmt = do string "while"
+                space
+                expression <- pBoolExpr
+                space
+                string "then"
+                space
+                statement <- pStatement
+                return (While expression statement)
+
+pAssignmentStmt :: Parser Command
+pAssignmentStmt = do t <- identifier
+                     symbol "="
+                     e <- pExpr
+                     return (Set t e)
+
+pPrintStmt :: Parser Command
+pPrintStmt = do string "print"
+                space
+                e <- pExpr
+                return (Print e)
+
+pQuitStmt :: Parser Command
+pQuitStmt = do string "quit"
+               return Quit
+
+pBoolExpr :: Parser Compare
+pBoolExpr = do
+
+data Compare = EQ | NE | GT | LT
+
+-- A data decl for "library functions"
+-- an array for all functions (including library and user defined)
