@@ -130,7 +130,7 @@ flt                           :: Parser Float
 flt                           =  do x <- int
                                     char '.'
                                     y <- nat
-                                    return (read (show x ++ "." ++ show y) :: Float)
+                                    return (read (show x ++ "." ++ show y))
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
