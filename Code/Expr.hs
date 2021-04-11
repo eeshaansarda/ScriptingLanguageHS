@@ -41,7 +41,7 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
-  (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i)) f)
+  (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
   (Just (IntVal i1), Just (IntVal i2)) -> Just (IntVal (round (func (fromIntegral i1) (fromIntegral i2))))
   _ -> Nothing
   where
