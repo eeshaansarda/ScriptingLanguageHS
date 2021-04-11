@@ -39,15 +39,17 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
   _ -> Nothing
 eval vars expr = case (eval vars x, eval vars y) of
-  (Just (IntVal i), Just (IntVal j)) -> Just (IntVal (func i j))
-  (Just (FltVal i), Just (FltVal j)) -> Just (FltVal (func i j))
+  (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
+  (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromInteger (toInteger i))))
+  (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromInteger (toInteger i)) f))
+  (Just (IntVal i1), Just (IntVal i2)) -> Just (IntVal (round (func (fromInteger (toInteger i1)) (fromInteger (toInteger i2)))))
   _ -> Nothing
   where
     (func, x, y) = case expr of
       Add expr1 expr2 -> ((+), expr1, expr2)
       Sub expr1 expr2 -> ((-), expr1, expr2)
       Mul expr1 expr2 -> ((*), expr1, expr2)
-      Div expr1 expr2 -> (div, expr1, expr2)
+      Div expr1 expr2 -> ((/), expr1, expr2)
 
 
 digitToInt :: Char -> Int
