@@ -5,23 +5,35 @@ import System.Console.Haskeline
 import Expr
 import Parsing
 
-data State = State {vars :: [(Name, Value)]}
+data State = State {vars :: BTree}
 
 initState :: State
-initState = State []
+initState = State Leaf
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
 -- If it already exists, remove the old value
-updateVars :: Name -> Value -> [(Name, Value)] -> [(Name, Value)]
-updateVars name value [] = [(name, value)]
-updateVars name value ((var, val) : vars)
-  | name == var = (var, value) : vars
-  | otherwise = (var, val) : updateVars name value vars
+updateVars :: Name -> Value -> BTree -> BTree
+updateVars _name _value Leaf = Node (_name, _value) Leaf Leaf
+updateVars _name _value (Node (name, value) ltree rtree)
+  | _name < name = Node (name, value) (updateVars _name _value ltree) rtree
+  | _name > name = Node (name, value) ltree (updateVars _name _value rtree)
+  | otherwise = Node (name, _value) ltree rtree
 
 -- Return a new set of variables with the given name removed
-dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
-dropVar name vars = [(var, val) | (var, val) <- vars, var /= name]
+dropVar :: Name -> BTree -> BTree
+dropVar _name Leaf = Leaf
+dropVar _name (Node (name, value) ltree rtree)
+  | _name < name = Node (name, value) (dropVar _name ltree) rtree
+  | _name > name = Node (name, value) ltree (dropVar _name rtree)
+  | otherwise = case (ltree, rtree) of
+    (Leaf, _) -> rtree
+    (_, Leaf) -> ltree
+    _ -> Node (left_largest_var, left_largest_val) (dropVar left_largest_var ltree) rtree
+    where (left_largest_var, left_largest_val) = largestVar ltree
+          largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
+            Node (name_, value_) _ Leaf -> (name_, value_)
+            Node (_, _) _ rtree -> largestVar rtree
 
 process :: State -> Command -> InputT IO ()
 process st (Set var e) =

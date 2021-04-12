@@ -29,11 +29,28 @@ data Command = Set Name Expr -- assign an expression to a variable name
 data Value = IntVal Int | FltVal Float | StrVal String
   deriving Show
 
-eval :: [(Name, Value)] -> -- Variable name to value mapping
+data BTree = Leaf | Node (Name, Value) BTree BTree
+
+instance Show BTree where
+  show btree = show (inorderTraversal btree)
+
+-- Inorder traversal of the binary tree, only used for instance of show.
+inorderTraversal :: BTree -> [(Name, Value)]
+inorderTraversal Leaf = []
+inorderTraversal (Node (name, value) ltree rtree) = inorderTraversal ltree ++ [(name, value)] ++ inorderTraversal rtree
+
+btreeLookup :: Name -> BTree -> Maybe Value
+btreeLookup _name Leaf = Nothing
+btreeLookup _name (Node (name, value) ltree rtree)
+  | _name < name = btreeLookup _name ltree
+  | _name > name = btreeLookup _name rtree 
+  | otherwise = Just value
+
+eval :: BTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
 eval vars (Val x) = Just x -- for values, just give the value directly
-eval vars (Var x) = lookup x vars
+eval vars (Var x) = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
 eval vars (ToString x) = Just (StrVal (show x))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
