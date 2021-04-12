@@ -21,7 +21,8 @@ data Expr = Add Expr Expr
 
           | Compare Expr Expr
 
-          | Input
+          -- This is function call
+          | FunCall Name [Value] -- Fun is function, Name is name of function, [Value] are arguments
   deriving Show
 
 -- data StrExpr = V
@@ -32,7 +33,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Quit          -- quit the program
   deriving Show
 
-data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool
+data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | Null
   deriving Show
 
 eval :: [(Name, Value)] -> -- Variable name to value mapping
@@ -82,20 +83,20 @@ pExpr = (do t <- pTerm
                   ||| return t)
         ||| do s <- pStringExpr
                return s
-        ||| (do symbol "input"
-                return Input)
 
 pFactor :: Parser Expr
-pFactor = do f <- float
-             return (Val (FltVal f))
-          ||| do d <- integer
-                 return (Val (IntVal d))
-              ||| do v <- identifier
-                     return (Var v)
-                  ||| do symbol "("
-                         e <- pExpr
-                         symbol ")"
-                         return e
+pFactor = do f <- pFuncCall initFunc
+             return FunCall f
+          ||| do f <- float
+                 return (Val (FltVal f))
+              ||| do d <- integer
+                     return (Val (IntVal d))
+                  ||| do v <- identifier
+                         return (Var v)
+                      ||| do symbol "("
+                             e <- pExpr
+                             symbol ")"
+                             return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
@@ -180,7 +181,23 @@ pQuitStmt = do string "quit"
 pBoolExpr :: Parser Compare
 pBoolExpr = do
 
+pFuncCall :: [String] -> Parser String
+pFuncCall [] = failure
+pFuncCall (x:xs) = do case (symbol x) of
+                        [] -> pFuncCall xs
+                        [(v, out)] -> do [(v, out)]
+
+
 data Compare = EQ | NE | GT | LT
 
+-- data LibFunc = Input | Abs Integer | Abs Float |
+               -- Mod Integer | Mod Float |
+               -- Power Integer | Power Float
+
+-- Function Overloading is going to have to wait
+initFunc :: [(String, [Value])]
+initFunc = [("input", [Null]), ("abs", [IntVal]), ("mod", [IntVal]), ("power", [IntVal])]
+
 -- A data decl for "library functions"
+  -- On second thought that would be a constraint and not functions could be added after
 -- an array for all functions (including library and user defined)
