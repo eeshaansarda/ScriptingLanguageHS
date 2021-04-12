@@ -1,1 +1,28 @@
 # Haskell2
+
+## Basic Requirements
+- [x] Quit command
+- [x] Tracking system State
+- [x] Extend parser to support multi-digit numbers and whitespace around operators
+- [x] String concatenation
+- [ ] Implement conversion between string to int functionality
+- [ ] Implement command to read user input as string functionality
+
+## Easy Requirements
+- [ ] Implement Quickcheck
+- [ ] Implement functionality for abs, mod, and power
+- [x] Extend parser to support negative numbers
+- [x] Support floats
+
+## Medium Requirements
+- [x] Implement binary search tree
+- [ ] Add command to read and process input files with commands
+- [ ] Implement better treatment of errors using Either type
+- [ ] Implement functionality for if...then...else
+
+## Hard Requirements
+- [x] Add Haskeline for command history
+  - [ ] Implement tab completion for commands and variable names
+- [ ] Add command for simple repetition
+- [ ] Implement functionality for loop constructs
+- [ ] Allow defining and calling functions
