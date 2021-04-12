@@ -23,6 +23,7 @@ data Expr = Add Expr Expr
 
           -- This is function call
           | FunCall Name [Value] -- Fun is function, Name is name of function, [Value] are arguments
+          -- Maybe Value should be Expression here
   deriving Show
 
 -- data StrExpr = V
@@ -33,6 +34,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Quit          -- quit the program
   deriving Show
 
+data Type = IntVal | FltVal | StrVal | BoolVal | Null
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | Null
   deriving Show
 
@@ -180,15 +182,37 @@ pQuitStmt :: Parser Command
 pQuitStmt = do string "quit"
                return Quit
 
-pBoolExpr :: Parser Compare
-pBoolExpr = do
+-- pBoolExpr :: Parser Compare
+-- pBoolExpr = do
 
-pFuncCall :: [String] -> Parser String
-pFuncCall [] = failure
-pFuncCall (x:xs) = do case (symbol x) of
-                        [] -> pFuncCall xs
-                        [(v, out)] -> do [(v, out)]
+pFuncName :: [(String, [Type])] -> Parser Expression
+pFuncName [] = failure
+pFuncName ((x, x2):xs) = do case (symbol x) of
+                              [] -> pFuncCall xs
+                              [(v, out)] -> (do args <- pFuncArg x2
+                                                return (Fun v args))
+                                            ||| failure
 
+-- Parser [Expression]?
+pFuncArg :: [Type] -> Parser [Expression]
+pFuncArg xs = do symbol "("
+                 i <- pArgs xs
+                 symbol ")"
+                 return (i)
+                 -- variable lookup
+
+-- When evaluating, eval Expression then call function
+pArgs :: [Type] -> Parser [Expression]
+pArgs (x :[]) ys | x == Null = return ys
+                 | otherwise = do i <- pExpr
+                                  return (ys:i)
+pArgs (x :xs) ys = do i <- pExpr
+                      symbol ","
+                      pArgs xs ys
+
+pFuncCall :: Parser Expression
+pFuncCall = do p <- pFuncName initFunc
+               return (p)
 
 data Compare = EQ | NE | GT | LT
 
@@ -197,7 +221,7 @@ data Compare = EQ | NE | GT | LT
                -- Power Integer | Power Float
 
 -- Function Overloading is going to have to wait
-initFunc :: [(String, [Value])]
+initFunc :: [(String, [Type])]
 initFunc = [("input", [Null]), ("abs", [IntVal]), ("mod", [IntVal]), ("power", [IntVal])]
 
 -- A data decl for "library functions"
