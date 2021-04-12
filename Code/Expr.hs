@@ -20,6 +20,8 @@ data Expr = Add Expr Expr
           | Concat Expr Expr
 
           | Compare Expr Expr
+
+          | Input
   deriving Show
 
 -- data StrExpr = V
@@ -80,6 +82,8 @@ pExpr = (do t <- pTerm
                   ||| return t)
         ||| do s <- pStringExpr
                return s
+        ||| (do symbol "input"
+                return Input)
 
 pFactor :: Parser Expr
 pFactor = do f <- float
