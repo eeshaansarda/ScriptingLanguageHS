@@ -221,9 +221,10 @@ data Compare = EQ | NE | GT | LT
                -- Power Integer | Power Float
 
 -- Function Overloading is going to have to wait
+-- [(Function name, Arguments, Return Type?)] -> need to chanf
 initFunc :: [(String, [Type])]
 initFunc = [("input", [Null]), ("abs", [IntVal]), ("mod", [IntVal]), ("power", [IntVal])]
 
 -- A data decl for "library functions"
-  -- On second thought that would be a constraint and not functions could be added after
+  -- On second thought that would be a constraint and functions will not be able to be added after
 -- an array for all functions (including library and user defined)
