@@ -65,6 +65,7 @@ eval vars (FunCall name args) = case name of
     where toFlt :: [Expr] -> Maybe Value
           toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
           toFlt _                      = Nothing
+
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
@@ -104,9 +105,10 @@ pExpr = (do symbol "input"
                  ||| do symbol "-"
                         e <- pExpr
                         return (Sub t e)
-                      ||| return t)
-        ||| (do s <- pStringExpr
-                return s)
+                     ||| do symbol "++"
+                            e <- pExpr
+                            return (Concat t e)
+                          ||| return t)
 
 pFactor :: Parser Expr
 pFactor = do f <- pFunCall
@@ -121,6 +123,8 @@ pFactor = do f <- pFunCall
                              e <- pExpr
                              symbol ")"
                              return e
+                          ||| do s <- pString
+                                 return s
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
@@ -141,13 +145,6 @@ pString = do char '"'
              str <- many (sat (/= '"'))
              char '"'
              return (Val (StrVal str))
-
-pStringExpr :: Parser Expr
-pStringExpr = do s <- pString
-                 do symbol "++"
-                    s2 <- pStringExpr
-                    return (Concat s s2)
-                  ||| return s
 
 -- Statement -> whileStmt | ifStmt | assignmentStmt | printStmt | quitStmt
 -- Statement -> whileStmt | ifStmt | assignmentStmt | functionCallStmt
