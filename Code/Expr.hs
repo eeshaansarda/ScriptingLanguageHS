@@ -51,7 +51,7 @@ eval :: BTree -> -- Variable name to value mapping
 eval vars (Val x) = Just x -- for values, just give the value directly
 eval vars (Var x) = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
 eval vars (ToString x) = Just (StrVal (show x))
-eval vars (ToInt x)    = Just (IntVal (read x :: Int))
+-- eval vars (ToInt x)    = Just (IntVal (read x :: Int))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
                               (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
                               _                                  -> Nothing
@@ -95,6 +95,15 @@ pExpr = do t <- pTerm
                  ||| return t
          ||| do s <- pStringExpr
                 return s
+         ||| do string "ToString" 
+                space
+                e <- pExpr
+                return (ToString e)
+         ||| do string "ToInt"
+                space
+                e <- pExpr
+                return (ToInt e)
+
 
 pFactor :: Parser Expr
 pFactor = do f <- float
