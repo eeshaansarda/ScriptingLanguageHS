@@ -40,6 +40,10 @@ process st (Set var e) =
   do
     case eval (vars st) e of
       Nothing -> repl st
+      Just Input -> do inpVal <- getInputLine ("Input > ")
+                       case inpVal of
+                         Just inp -> repl (st {vars = updateVars var (StrVal inp) (vars st)})
+                         Nothing -> repl (st {vars = updateVars var (StrVal "") (vars st)})
       Just eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
