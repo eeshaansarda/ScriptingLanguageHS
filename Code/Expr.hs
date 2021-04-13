@@ -4,29 +4,35 @@ import Parsing
 
 type Name = String
 
--- At first, 'Expr' contains only addition, conversion to strings, and integer
--- values. You will need to add other operations, and variables
 data Expr = Add Expr Expr
           | Sub Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
           | ToString Expr
           | ToInt    Expr
+
           | Val Value
           | Var Name
-          | Concat Expr Expr
-  deriving Show
 
--- data StrExpr = V
+          | Concat Expr Expr
+
+          | Compare Expr Expr
+
+          | FunCall Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
+          | InputExpr
+
+  deriving Show
 
 -- These are the REPL commands
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | Quit          -- quit the program
+             | While Expr Command
+             | If Expr Command Command
   deriving Show
 
-data Value = IntVal Int | FltVal Float | StrVal String
-  deriving Show
+data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
+  deriving (Show, Eq)
 
 data BTree = Leaf | Node (Name, Value) BTree BTree
 
@@ -35,7 +41,7 @@ instance Show BTree where
 
 -- Inorder traversal of the binary tree, only used for instance of show.
 inorderTraversal :: BTree -> [(Name, Value)]
-inorderTraversal Leaf = []
+inorderTraversal Leaf                             = []
 inorderTraversal (Node (name, value) ltree rtree) = inorderTraversal ltree ++ [(name, value)] ++ inorderTraversal rtree
 
 btreeLookup :: Name -> BTree -> Maybe Value
@@ -43,13 +49,14 @@ btreeLookup _name Leaf = Nothing
 btreeLookup _name (Node (name, value) ltree rtree)
   | _name < name = btreeLookup _name ltree
   | _name > name = btreeLookup _name rtree 
-  | otherwise = Just value
+  | otherwise    = Just value
+
 
 eval :: BTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
-eval vars (Val x) = Just x -- for values, just give the value directly
-eval vars (Var x) = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
+eval vars (Val x)      = Just x -- for values, just give the value directly
+eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
 eval vars (ToString x) = Just (StrVal (show x))
 -- eval vars (ToInt x)    = Just (IntVal (read x :: Int))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
@@ -68,10 +75,7 @@ eval vars expr         = case (eval vars x, eval vars y) of
                                   Mul expr1 expr2 -> ((*), expr1, expr2)
                                   Div expr1 expr2 -> ((/), expr1, expr2)
 
-
-digitToInt :: Char -> Int
-digitToInt x = fromEnum x - fromEnum '0'
-
+-- COMMAND AND EXPRESSION PARSER
 pCommand :: Parser Command
 pCommand = do t <- identifier
               symbol "="
@@ -85,37 +89,32 @@ pCommand = do t <- identifier
                    return Quit
 
 pExpr :: Parser Expr
-pExpr = do t <- pTerm
-           do symbol "+"
-              e <- pExpr
-              return (Add t e)
-            ||| do symbol "-"
+pExpr = (do symbol "input"
+            return InputExpr)
+        ||| (do t <- pTerm
+                do symbol "+"
                    e <- pExpr
-                   return (Sub t e)
-                 ||| return t
-         ||| do s <- pStringExpr
-                return s
-         ||| do string "ToString" 
-                space
-                e <- pExpr
-                return (ToString e)
-         ||| do string "ToInt"
-                space
-                e <- pExpr
-                return (ToInt e)
-
+                   return (Add t e)
+                 ||| do symbol "-"
+                        e <- pExpr
+                        return (Sub t e)
+                      ||| return t)
+        ||| (do s <- pStringExpr
+                return s)
 
 pFactor :: Parser Expr
-pFactor = do f <- float
-             return (Val (FltVal f))
-          ||| do d <- integer
-                 return (Val (IntVal d))
-              ||| do v <- identifier
-                     return (Var v)
-                  ||| do symbol "("
-                         e <- pExpr
-                         symbol ")"
-                         return e
+pFactor = do f <- pFuncCall
+             return f
+          ||| do f <- float
+                 return (Val (FltVal f))
+              ||| do d <- integer
+                     return (Val (IntVal d))
+                  ||| do v <- identifier
+                         return (Var v)
+                      ||| do symbol "("
+                             e <- pExpr
+                             symbol ")"
+                             return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
@@ -127,6 +126,7 @@ pTerm = do f <- pFactor
                    return (Div f t)
                  ||| return f
 
+-- STRING PARSER
 pString :: Parser Expr
 pString = do char '"'
              str <- many (sat (/= '"'))
@@ -139,3 +139,95 @@ pStringExpr = do s <- pString
                     s2 <- pStringExpr
                     return (Concat s s2)
                   ||| return s
+
+-- STATEMENT PARSER
+pStatement :: Parser Command
+pStatement = (do s <- pIfStmt
+                 return (s))
+             ||| (do s <- pWhileStmt
+                     return (s))
+             ||| (do s <- pAssignmentStmt
+                     return (s))
+             ||| (do s <- pPrintStmt
+                     return (s))
+             ||| (do s <- pQuitStmt
+                     return (s))
+
+pIfStmt :: Parser Command
+pIfStmt = do string "if"
+             space
+             expression <- pBoolExpr
+             string "then"
+             space
+             statement <- pStatement
+             string "else"
+             eStatement <- pStatement
+             return (If expression statement eStatement)
+
+pWhileStmt :: Parser Command
+pWhileStmt = do string "while"
+                space
+                expression <- pBoolExpr
+                space
+                string "then"
+                space
+                statement <- pStatement
+                return (While expression statement)
+
+pAssignmentStmt :: Parser Command
+pAssignmentStmt = do t <- identifier
+                     symbol "="
+                     e <- pExpr
+                     return (Set t e)
+
+pPrintStmt :: Parser Command
+pPrintStmt = do string "print"
+                space
+                e <- pExpr
+                return (Print e)
+
+pQuitStmt :: Parser Command
+pQuitStmt = do string "quit"
+               return Quit
+
+-- FUNCTION PARSER 
+pFuncName :: [(String, [Value])] -> Parser Expr
+pFuncName [] = failure
+pFuncName ((x, x2):xs) = do name <- symbol x
+                            args <- pFuncArg x2
+                            return (FunCall name args)
+                            ||| pFuncName xs
+
+pFuncArg :: [Value] -> Parser [Expr]
+pFuncArg xs = do symbol "("
+                 i <- (pArgs xs [])
+                 symbol ")"
+                 return (i)
+
+pArgs :: [Value] -> [Expr] -> Parser [Expr]
+pArgs (x :[]) ys | x == NullVal = return ys
+                 | otherwise = do i <- pExpr
+                                  return (i:ys)
+pArgs (x :xs) ys | x == NullVal = pArgs xs ys
+                 | otherwise    = do i <- pExpr
+                                     symbol ","
+                                     pArgs xs (i:ys)
+
+pFuncCall :: Parser Expr
+pFuncCall = do p <- pFuncName initFunc
+               return (p)
+
+data Compare = EQ | NE | GT | LT
+
+pBoolExpr :: Parser Expr
+pBoolExpr = (do symbol "("
+                symbol "True"
+                symbol ")"
+                return (Val (BoolVal True)))
+            ||| (do symbol "("
+                    symbol "False"
+                    symbol ")"
+                    return (Val (BoolVal False)))
+
+initFunc :: [(String, [Value])]
+initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0])]
