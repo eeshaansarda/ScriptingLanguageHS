@@ -52,6 +52,14 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
   _ -> Nothing
 eval vars (InputExpr) = Just Input
+eval vars (FunCall name args) = case name of
+  "toString" -> toString args
+  -- need to eval the expressions
+    where toString :: [Expr] -> Maybe Value
+          toString ((Val (IntVal i)):[])  = Just (StrVal (show i))
+          -- toString ((FltVal i):[])  = Just (StrVal (show i))
+          -- toString ((BoolVal i):[]) = Just (StrVal (show i))
+          toString _                = Nothing
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
@@ -96,7 +104,7 @@ pExpr = (do symbol "input"
                 return s)
 
 pFactor :: Parser Expr
-pFactor = do f <- pFuncCall
+pFactor = do f <- pFunCall
              return f
           ||| do f <- float
                  return (Val (FltVal f))
@@ -228,9 +236,9 @@ pArgs (x :xs) ys | x == NullVal = pArgs xs ys
                                      symbol ","
                                      pArgs xs (i:ys)
 
-pFuncCall :: Parser Expr
-pFuncCall = do p <- pFuncName initFunc
-               return (p)
+pFunCall :: Parser Expr
+pFunCall = do p <- pFuncName initFunc
+              return (p)
 
 data Compare = EQ | NE | GT | LT
 
@@ -252,7 +260,7 @@ pBoolExpr = (do symbol "("
 -- Function Overloading is going to have to wait
 -- [(Function name, Arguments, Return Value?)] -> need to chanf
 initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0])]
+initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0]), ("toString", [IntVal 0])]
 
 -- A data decl for "library functions"
   -- On second thought that would be a constraint and functions will not be able to be added after
