@@ -47,19 +47,20 @@ eval :: [(Name, Value)] -> -- Variable name to value mapping
         Maybe Value -- Result (if no errors such as missing variables)
 eval vars (Val x) = Just x -- for values, just give the value directly
 eval vars (Var x) = lookup x vars
-eval vars (ToString x) = Just (StrVal (show x))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
   _ -> Nothing
 eval vars (InputExpr) = Just Input
 eval vars (FunCall name args) = case name of
   "toString" -> toString args
-  -- need to eval the expressions
     where toString :: [Expr] -> Maybe Value
-          toString ((Val (IntVal i)):[])  = Just (StrVal (show i))
-          -- toString ((FltVal i):[])  = Just (StrVal (show i))
-          -- toString ((BoolVal i):[]) = Just (StrVal (show i))
-          toString _                = Nothing
+          toString (intExpression:[])  = case eval vars intExpression of
+            Just (IntVal i) -> (Just (StrVal (show i)))
+            _              -> Nothing
+  "toInt"    -> toInt args
+    where toInt :: [Expr] -> Maybe Value
+          toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
+          toInt _                      = Nothing
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
@@ -260,7 +261,7 @@ pBoolExpr = (do symbol "("
 -- Function Overloading is going to have to wait
 -- [(Function name, Arguments, Return Value?)] -> need to chanf
 initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0]), ("toString", [IntVal 0])]
+initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0]), ("toString", [IntVal 0]), ("toInt", [StrVal ""])]
 
 -- A data decl for "library functions"
   -- On second thought that would be a constraint and functions will not be able to be added after
