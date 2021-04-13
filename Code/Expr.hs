@@ -61,6 +61,10 @@ eval vars (FunCall name args) = case name of
     where toInt :: [Expr] -> Maybe Value
           toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
           toInt _                      = Nothing
+  "toFloat"    -> toFlt args
+    where toFlt :: [Expr] -> Maybe Value
+          toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
+          toFlt _                      = Nothing
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
@@ -261,7 +265,9 @@ pBoolExpr = (do symbol "("
 -- Function Overloading is going to have to wait
 -- [(Function name, Arguments, Return Value?)] -> need to chanf
 initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0]), ("toString", [IntVal 0]), ("toInt", [StrVal ""])]
+initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]),
+            ("power", [IntVal 0]), ("toString", [IntVal 0]),
+            ("toInt", [StrVal ""]), ("toFloat", [FltVal 0.0])]
 
 -- A data decl for "library functions"
   -- On second thought that would be a constraint and functions will not be able to be added after
