@@ -23,7 +23,7 @@ data Expr = Add Expr Expr
 
           -- This is function call
           | FunCall Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
-          | Input
+          | InputExpr
 
           -- Maybe Value should be Expr here
   deriving Show
@@ -39,7 +39,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
   deriving Show
 
 -- data Value = IntVal | FltVal | StrVal | BoolVal | NullVal
-data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal
+data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
   deriving (Show, Eq)
 
 eval :: [(Name, Value)] -> -- Variable name to value mapping
@@ -51,6 +51,7 @@ eval vars (ToString x) = Just (StrVal (show x))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
   _ -> Nothing
+eval vars (InputExpr) = Just Input
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
@@ -81,16 +82,18 @@ pCommand = do t <- identifier
                         return Quit
 
 pExpr :: Parser Expr
-pExpr = (do t <- pTerm
-            do symbol "+"
-               e <- pExpr
-               return (Add t e)
-             ||| do symbol "-"
-                    e <- pExpr
-                    return (Sub t e)
-                  ||| return t)
-        ||| do s <- pStringExpr
-               return s
+pExpr = (do symbol "input"
+            return InputExpr)
+        ||| (do t <- pTerm
+                do symbol "+"
+                   e <- pExpr
+                   return (Add t e)
+                 ||| do symbol "-"
+                        e <- pExpr
+                        return (Sub t e)
+                      ||| return t)
+        ||| (do s <- pStringExpr
+                return s)
 
 pFactor :: Parser Expr
 pFactor = do f <- pFuncCall
