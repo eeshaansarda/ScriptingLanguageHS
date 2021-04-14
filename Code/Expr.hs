@@ -25,6 +25,13 @@ data Expr = Add Expr Expr
           | Not Expr
           | And Expr Expr
           | Or Expr Expr
+          | Eq Expr Expr
+          | Ne Expr Expr
+          | Gt Expr Expr
+          | Lt Expr Expr
+          | Gte Expr Expr
+          | Lte Expr Expr
+
 
   deriving Show
 
@@ -93,6 +100,12 @@ eval vars expr = case (eval vars x, eval vars y) of
       Sub expr1 expr2 -> ((-), expr1, expr2)
       Mul expr1 expr2 -> ((*), expr1, expr2)
       Div expr1 expr2 -> ((/), expr1, expr2)
+      -- Lt  expr1 expr2 -> ((<), expr1, expr2)
+      -- Gt  expr1 expr2 -> ((>), expr1, expr2)
+      -- Lte  expr1 expr2 -> ((<=), expr1, expr2)
+      -- Gte  expr1 expr2 -> ((>=), expr1, expr2)
+      -- Eq  expr1 expr2 -> ((==), expr1, expr2)
+      -- Ne  expr1 expr2 -> ((/=), expr1, expr2)
 
 -- COMMAND AND EXPRESSION PARSER
 -- pCommand :: Parser Command
@@ -247,13 +260,33 @@ pFunCall :: Parser Expr
 pFunCall = do p <- pFuncName initFunc
               return (p)
 
-data Compare = EQ | NE | GT | LT
+-- TODO Sorry for the bad naming choice
+-- please search and replace if possible
+pBoolFactor :: Parser Expr
+pBoolFactor = (do e <- pExpr
+                  symbol "<"
+                  e2 <- pExpr
+                  return (Lt e e2))
+              ||| (do e <- pExpr
+                      symbol ">"
+                      e2 <- pExpr
+                      return (Gt e e2))
+              ||| (do e <- pExpr
+                      symbol "=="
+                      e2 <- pExpr
+                      return (Eq e e2))
+              ||| (do e <- pExpr
+                      symbol "!="
+                      e2 <- pExpr
+                      return (Ne e e2))
 
 pBoolFact :: Parser Expr
 pBoolFact = (do symbol "True"
                 return (Val (BoolVal True))
             ||| do symbol "False"
                    return (Val (BoolVal False)))
+                ||| (do f <- pBoolFactor
+                        return f)
                 ||| (do symbol "!"
                         f <- pBoolFact
                         return (Not f))
