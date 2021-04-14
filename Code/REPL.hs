@@ -34,19 +34,19 @@ dropVar _name (Node (name, value) ltree rtree)
             Node (name_, value_) _ Leaf -> (name_, value_)
             Node (_, _) _ rtree -> largestVar rtree
 
-process :: State -> Command -> InputT IO ()
+process :: State -> Command -> InputT IO (State)
 process st (Set var e) =
   do
     case eval (vars st) e of
-      Nothing -> repl st
+      Nothing -> return st
       Just Input -> do inpVal <- getInputLine ("Input > ")
                        case inpVal of
-                         Just inp -> repl (st {vars = updateVars var (StrVal inp) (vars st)})
-                         Nothing -> repl (st {vars = updateVars var (StrVal "") (vars st)})
+                         Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
+                         Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
       Just eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
-        repl st'
+        return st'
 process st (Print e) =
   do
     case eval (vars st) e of
@@ -54,9 +54,24 @@ process st (Print e) =
       Just eval_res -> do
         outputStrLn (show eval_res)
     -- Print the result of evaluation
-    repl st
-process st Quit
-     = outputStrLn "Bye"
+    return st
+
+processRepl :: State -> Command -> InputT IO ()
+processRepl st (Set var e)  = do st' <- process st (Set var e)
+                                 repl st'
+processRepl st (Print e)    = do st' <- process st (Print e)
+                                 repl st'
+processRepl st (Quit)       = outputStrLn "Bye"
+processRepl st (If e b1 b2) = case eval (vars st) e of
+  Just (BoolVal True)  -> do processBlock st b1
+  Just (BoolVal False) -> do processBlock st b2
+  _                    -> outputStrLn "Invalid boolean value"
+  where processBlock :: State -> [Command] -> InputT IO()
+        processBlock st (cmd: cmds) = do st' <- process st cmd
+                                         processBlock st' cmds
+        processBlock st (cmd: [])   = do st' <- process st cmd
+                                         repl st'
+        processBlock st _           = repl st
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -72,6 +87,6 @@ repl st = do outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug messag
                 Just input -> 
                     case parse pStatement input of
                         [(cmd, "")] -> -- Must parse entire input
-                                process st cmd
+                                processRepl st cmd
                         _ -> do outputStrLn "Parse error"
                                 repl st
