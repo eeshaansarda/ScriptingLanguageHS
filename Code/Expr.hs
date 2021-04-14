@@ -61,35 +61,44 @@ eval :: BTree ->    -- Variable name to value mapping
 eval vars (Val x)             = Just x             -- for values, just give the value directly
 eval vars (Var x)             = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
 eval vars (Concat x y)        = case (eval vars x, eval vars y) of
-  (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
-  _                                  -> Nothing
+                                     (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
+                                     _                                  -> Nothing
 eval vars (InputExpr)         = Just Input
 eval vars (FunCall name args) = case name of
-  "toString" -> toString args
-    where toString :: [Expr] -> Maybe Value
-          toString (intExpression:[])  = case eval vars intExpression of
-            Just (IntVal i) -> (Just (StrVal (show i)))
-            _              -> Nothing
-  "toInt"    -> toInt args
-    where toInt :: [Expr] -> Maybe Value
-          toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
-          toInt _                      = Nothing
-  "toFloat"    -> toFlt args
-    where toFlt :: [Expr] -> Maybe Value
-          toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
-          toFlt _                      = Nothing
+                                     "toString" -> toString args
+                                       where toString :: [Expr] -> Maybe Value
+                                             toString (intExpression:[])  = case eval vars intExpression of
+                                               Just (IntVal i) -> (Just (StrVal (show i)))
+                                               Just (FltVal f) -> (Just (StrVal (show f)))
+                                               _               -> Nothing
+                                     "toInt"    -> toInt args
+                                       where toInt :: [Expr] -> Maybe Value
+                                             toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
+                                             toInt _                      = Nothing
+                                     "toFloat"  -> toFlt args
+                                       where toFlt :: [Expr] -> Maybe Value
+                                             toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
+                                             toFlt _                      = Nothing
+eval vars (Abs x)             = case eval vars x of
+                                     Just (IntVal i) -> Just (IntVal (abs i))
+                                     Just (FltVal f) -> Just (FltVal (abs f))
+                                     _               -> Nothing
+eval vars (Mod x y)           = case (eval vars x, eval vars y) of
+                                     (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (mod a b))
+                                     _                                  -> Nothing
 eval vars expr                = case (eval vars x, eval vars y) of
-  (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
-  (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
-  (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
-  (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (round (func (fromIntegral a) (fromIntegral b))))
-  _                                  -> Nothing
-  where
-    (func, x, y)              = case expr of
-      Add expr1 expr2 -> ((+), expr1, expr2)
-      Sub expr1 expr2 -> ((-), expr1, expr2)
-      Mul expr1 expr2 -> ((*), expr1, expr2)
-      Div expr1 expr2 -> ((/), expr1, expr2)
+                                     (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
+                                     (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
+                                     (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
+                                     (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (round (func (fromIntegral a) (fromIntegral b))))
+                                     _                                  -> Nothing
+                                     where
+                                       (func, x, y) = case expr of
+                                         Add expr1 expr2 -> ((+), expr1, expr2)
+                                         Sub expr1 expr2 -> ((-), expr1, expr2)
+                                         Mul expr1 expr2 -> ((*), expr1, expr2)
+                                         Div expr1 expr2 -> ((/), expr1, expr2)
+                                         Pow expr1 expr2 -> ((**), expr1, expr2)
 
 -- COMMAND AND EXPRESSION PARSER
 -- pCommand :: Parser Command
@@ -273,8 +282,7 @@ pBoolExpr = (do symbol "("
                     return (Val (BoolVal False)))
 
 initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]),
-            ("power", [IntVal 0]), ("toString", [IntVal 0]),
+initFunc = [("input", [NullVal]), ("toString", [IntVal 0]),
             ("toInt", [StrVal ""]), ("toFloat", [FltVal 0.0])]
 
 -- A data decl for "library functions"
