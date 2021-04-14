@@ -5,8 +5,9 @@
 - [x] Tracking system State
 - [x] Extend parser to support multi-digit numbers and whitespace around operators
 - [x] String concatenation
-- [ ] Implement conversion between string to int functionality
-- [ ] Implement command to read user input as string functionality
+- [x] Implement conversion between string to int functionality
+- [x] Implement command to read user input as string functionality
+  - [ ] Input has some bugs (print input)
 
 ## Easy Requirements
 - [ ] Implement Quickcheck
