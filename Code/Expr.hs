@@ -28,8 +28,8 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | Quit          -- quit the program
-             | While Expr Command
-             | If Expr Command Command
+             | While Expr [Command]
+             | If Expr [Command] [Command]
   deriving Show
 
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
@@ -77,17 +77,17 @@ eval vars expr = case (eval vars x, eval vars y) of
       Div expr1 expr2 -> ((/), expr1, expr2)
 
 -- COMMAND AND EXPRESSION PARSER
-pCommand :: Parser Command
-pCommand = do t <- identifier
-              symbol "="
-              e <- pExpr
-              return (Set t e)
-            ||| do string "print"
-                   space
-                   e <- pExpr
-                   return (Print e)
-                 ||| do string "quit"
-                        return Quit
+-- pCommand :: Parser Command
+-- pCommand = do t <- identifier
+              -- symbol "="
+              -- e <- pExpr
+              -- return (Set t e)
+            -- ||| do string "print"
+                   -- space
+                   -- e <- pExpr
+                   -- return (Print e)
+                 -- ||| do string "quit"
+                        -- return Quit
 
 pExpr :: Parser Expr
 pExpr = (do symbol "input"
@@ -154,16 +154,22 @@ pStatement = (do s <- pIfStmt
              ||| (do s <- pQuitStmt
                      return (s))
 
+pStmtBlock :: Parser [Command]
+pStmtBlock = do symbol "{"
+                stmts <- many pStatement
+                symbol "}"
+                return stmts
+
 pIfStmt :: Parser Command
 pIfStmt = do string "if"
              space
              expression <- pBoolExpr
              string "then"
              space
-             statement <- pStatement
+             stmtBlock <- pStmtBlock
              string "else"
-             eStatement <- pStatement
-             return (If expression statement eStatement)
+             eStmtBlock <- pStmtBlock
+             return (If expression stmtBlock eStmtBlock)
 
 pWhileStmt :: Parser Command
 pWhileStmt = do string "while"
@@ -172,8 +178,8 @@ pWhileStmt = do string "while"
                 space
                 string "then"
                 space
-                statement <- pStatement
-                return (While expression statement)
+                stmtBlock <- pStmtBlock
+                return (While expression stmtBlock)
 
 pAssignmentStmt :: Parser Command
 pAssignmentStmt = do t <- identifier
@@ -213,6 +219,7 @@ pArgs (x :xs) ys | x == NullVal = pArgs xs ys
                  | otherwise    = do i <- pExpr
                                      symbol ","
                                      pArgs xs (i:ys)
+pArgs _ _ = failure
 
 pFuncCall :: Parser Expr
 pFuncCall = do p <- pFuncName initFunc
