@@ -8,8 +8,10 @@ data Expr = Add Expr Expr
           | Sub Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
-          | ToString Expr
-          | ToInt    Expr
+
+          | Abs Expr
+          | Mod Expr Expr
+          | Pow Expr Expr
 
           | Val Value
           | Var Name
@@ -52,16 +54,16 @@ btreeLookup _name (Node (name, value) ltree rtree)
   | otherwise    = Just value
 
 
-eval :: BTree -> -- Variable name to value mapping
-        Expr -> -- Expression to evaluate
+eval :: BTree ->    -- Variable name to value mapping
+        Expr ->     -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
 
-eval vars (Val x)      = Just x -- for values, just give the value directly
-eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
-eval vars (Concat x y) = case (eval vars x, eval vars y) of
+eval vars (Val x)             = Just x             -- for values, just give the value directly
+eval vars (Var x)             = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
+eval vars (Concat x y)        = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
   _                                  -> Nothing
-eval vars (InputExpr)  = Just Input
+eval vars (InputExpr)         = Just Input
 eval vars (FunCall name args) = case name of
   "toString" -> toString args
     where toString :: [Expr] -> Maybe Value
@@ -76,14 +78,14 @@ eval vars (FunCall name args) = case name of
     where toFlt :: [Expr] -> Maybe Value
           toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
           toFlt _                      = Nothing
-eval vars expr = case (eval vars x, eval vars y) of
+eval vars expr                = case (eval vars x, eval vars y) of
   (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
   (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
   (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (round (func (fromIntegral a) (fromIntegral b))))
   _                                  -> Nothing
   where
-    (func, x, y) = case expr of
+    (func, x, y)              = case expr of
       Add expr1 expr2 -> ((+), expr1, expr2)
       Sub expr1 expr2 -> ((-), expr1, expr2)
       Mul expr1 expr2 -> ((*), expr1, expr2)
@@ -126,22 +128,40 @@ pFactor = do f <- pFunCall
                      return (Val (IntVal d))
                   ||| do v <- identifier
                          return (Var v)
-                      ||| do symbol "("
-                             e <- pExpr
-                             symbol ")"
-                             return e
-                          ||| do s <- pString
-                                 return s
+                      ||| do a <- pAbs
+                             return a
+                          ||| do symbol "("
+                                 e <- pExpr
+                                 symbol ")"
+                                 return e
+                               ||| do s <- pString
+                                      return s
 
 pTerm :: Parser Expr
-pTerm = do f <- pFactor
+pTerm = do f <- pPower
            do symbol "*"
               t <- pTerm
               return (Mul f t)
             ||| do symbol "/"
                    t <- pTerm
                    return (Div f t)
-                 ||| return f
+                 ||| do symbol "%"
+                        t <- pTerm
+                        return (Mod f t)
+                      ||| return f
+
+pAbs :: Parser Expr
+pAbs = do symbol "|"
+          e <- pExpr
+          symbol "|"
+          return (Abs e)
+
+pPower :: Parser Expr
+pPower = do f <- pFactor
+            do symbol "^"
+               p <- pFactor
+               return (Pow f p)
+             ||| return f
 
 -- STRING PARSER
 pString :: Parser Expr
