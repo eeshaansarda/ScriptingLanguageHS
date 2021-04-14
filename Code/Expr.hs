@@ -6,8 +6,6 @@ import Data.Maybe
 
 type Name = String
 
--- At first, 'Expr' contains only addition, conversion to strings, and integer
--- values. You will need to add other operations, and variables
 data Expr = Add Expr Expr
           | Sub Expr Expr
           | Mul Expr Expr
@@ -21,36 +19,50 @@ data Expr = Add Expr Expr
 
           | Compare Expr Expr
 
-          -- This is function call
           | FunCall Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
           | InputExpr
 
-          -- Maybe Value should be Expr here
   deriving Show
-
--- data StrExpr = V
 
 -- These are the REPL commands
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | Quit          -- quit the program
-             | While Expr Command
-             | If Expr Command Command
+             | While Expr [Command]
+             | If Expr [Command] [Command]
   deriving Show
 
--- data Value = IntVal | FltVal | StrVal | BoolVal | NullVal
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
   deriving (Show, Eq)
 
-eval :: [(Name, Value)] -> -- Variable name to value mapping
-        Expr -> -- Expr to evaluate
+data BTree = Leaf | Node (Name, Value) BTree BTree
+
+instance Show BTree where
+  show btree = show (inorderTraversal btree)
+
+-- Inorder traversal of the binary tree, only used for instance of show.
+inorderTraversal :: BTree -> [(Name, Value)]
+inorderTraversal Leaf                             = []
+inorderTraversal (Node (name, value) ltree rtree) = inorderTraversal ltree ++ [(name, value)] ++ inorderTraversal rtree
+
+btreeLookup :: Name -> BTree -> Maybe Value
+btreeLookup _name Leaf = Nothing
+btreeLookup _name (Node (name, value) ltree rtree)
+  | _name < name = btreeLookup _name ltree
+  | _name > name = btreeLookup _name rtree 
+  | otherwise    = Just value
+
+
+eval :: BTree -> -- Variable name to value mapping
+        Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
-eval vars (Val x) = Just x -- for values, just give the value directly
-eval vars (Var x) = lookup x vars
+
+eval vars (Val x)      = Just x -- for values, just give the value directly
+eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
-  _ -> Nothing
-eval vars (InputExpr) = Just Input
+  _                                  -> Nothing
+eval vars (InputExpr)  = Just Input
 eval vars (FunCall name args) = case name of
   "toString" -> toString args
     where toString :: [Expr] -> Maybe Value
@@ -65,13 +77,12 @@ eval vars (FunCall name args) = case name of
     where toFlt :: [Expr] -> Maybe Value
           toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
           toFlt _                      = Nothing
-
 eval vars expr = case (eval vars x, eval vars y) of
-  (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
+  (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
   (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
-  (Just (IntVal i1), Just (IntVal i2)) -> Just (IntVal (round (func (fromIntegral i1) (fromIntegral i2))))
-  _ -> Nothing
+  (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (round (func (fromIntegral a) (fromIntegral b))))
+  _                                  -> Nothing
   where
     (func, x, y) = case expr of
       Add expr1 expr2 -> ((+), expr1, expr2)
@@ -79,21 +90,18 @@ eval vars expr = case (eval vars x, eval vars y) of
       Mul expr1 expr2 -> ((*), expr1, expr2)
       Div expr1 expr2 -> ((/), expr1, expr2)
 
-
-digitToInt :: Char -> Int
-digitToInt x = fromEnum x - fromEnum '0'
-
-pCommand :: Parser Command
-pCommand = do t <- identifier
-              symbol "="
-              e <- pExpr
-              return (Set t e)
-            ||| do string "print"
-                   space
-                   e <- pExpr
-                   return (Print e)
-                 ||| do string "quit"
-                        return Quit
+-- COMMAND AND EXPRESSION PARSER
+-- pCommand :: Parser Command
+-- pCommand = do t <- identifier
+              -- symbol "="
+              -- e <- pExpr
+              -- return (Set t e)
+            -- ||| do string "print"
+                   -- space
+                   -- e <- pExpr
+                   -- return (Print e)
+                 -- ||| do string "quit"
+                        -- return Quit
 
 pExpr :: Parser Expr
 pExpr = (do symbol "input"
@@ -136,19 +144,20 @@ pTerm = do f <- pFactor
                    return (Div f t)
                  ||| return f
 
--- What happens when it doesnt find "
--- Maybe it looks till the end of file
--- and then results in an error?
--- Or can add a functionality for one line strings
+-- STRING PARSER
 pString :: Parser Expr
 pString = do char '"'
              str <- many (sat (/= '"'))
              char '"'
              return (Val (StrVal str))
 
+
 -- Statement -> whileStmt | ifStmt | assignmentStmt | printStmt | quitStmt
 -- Statement -> whileStmt | ifStmt | assignmentStmt | functionCallStmt
 
+
+
+-- STATEMENT PARSER
 pStatement :: Parser Command
 pStatement = (do s <- pIfStmt
                  return (s))
@@ -161,20 +170,22 @@ pStatement = (do s <- pIfStmt
              ||| (do s <- pQuitStmt
                      return (s))
 
+pStmtBlock :: Parser [Command]
+pStmtBlock = do symbol "{"
+                stmts <- many pStatement
+                symbol "}"
+                return stmts
+
 pIfStmt :: Parser Command
 pIfStmt = do string "if"
              space
              expression <- pBoolExpr
              string "then"
              space
-             statement <- pStatement
+             stmtBlock <- pStmtBlock
              string "else"
-             eStatement <- pStatement
-             return (If expression statement eStatement)
-             -- do string "else"
-                -- eStatement <- pStatement
-                -- return (If expression statement eStatement)
-              -- ||| return (If expression statement Nothing)
+             eStmtBlock <- pStmtBlock
+             return (If expression stmtBlock eStmtBlock)
 
 pWhileStmt :: Parser Command
 pWhileStmt = do string "while"
@@ -183,8 +194,8 @@ pWhileStmt = do string "while"
                 space
                 string "then"
                 space
-                statement <- pStatement
-                return (While expression statement)
+                stmtBlock <- pStmtBlock
+                return (While expression stmtBlock)
 
 pAssignmentStmt :: Parser Command
 pAssignmentStmt = do t <- identifier
@@ -202,33 +213,20 @@ pQuitStmt :: Parser Command
 pQuitStmt = do string "quit"
                return Quit
 
--- pBoolExpr :: Parser Compare
--- pBoolExpr = do
-
+-- FUNCTION PARSER 
 pFuncName :: [(String, [Value])] -> Parser Expr
 pFuncName [] = failure
 pFuncName ((x, x2):xs) = do name <- symbol x
                             args <- pFuncArg x2
                             return (FunCall name args)
                             ||| pFuncName xs
--- pFuncName ((x, x2):xs) = do case (symbol x) of
-                              -- [] -> (pFuncName xs)
-                              -- [(name, out)] -> (do args <- pFuncArg x2
-                                                   -- return (FunCall name args))
-                                               -- ||| failure
 
--- Parser [Expr]?
 pFuncArg :: [Value] -> Parser [Expr]
 pFuncArg xs = do symbol "("
                  i <- (pArgs xs [])
                  symbol ")"
                  return (i)
-                 -- variable lookup
 
--- When evaluating, eval Expr then call function
-  -- Expressions should work, but matching them here is not possible
-  -- Maybe eval it to get a [Value]
-  -- Cannot use eval here because the loop's variables cannot be accessed here
 pArgs :: [Value] -> [Expr] -> Parser [Expr]
 pArgs (x :[]) ys | x == NullVal = return ys
                  | otherwise = do i <- pExpr
@@ -237,6 +235,7 @@ pArgs (x :xs) ys | x == NullVal = pArgs xs ys
                  | otherwise    = do i <- pExpr
                                      symbol ","
                                      pArgs xs (i:ys)
+pArgs _ _ = failure
 
 pFunCall :: Parser Expr
 pFunCall = do p <- pFuncName initFunc
@@ -254,13 +253,6 @@ pBoolExpr = (do symbol "("
                     symbol ")"
                     return (Val (BoolVal False)))
 
-
--- data LibFunc = Input | Abs Integer | Abs Float |
-               -- Mod Integer | Mod Float |
-               -- Power Integer | Power Float
-
--- Function Overloading is going to have to wait
--- [(Function name, Arguments, Return Value?)] -> need to chanf
 initFunc :: [(String, [Value])]
 initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]),
             ("power", [IntVal 0]), ("toString", [IntVal 0]),
