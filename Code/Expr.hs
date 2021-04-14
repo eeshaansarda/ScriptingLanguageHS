@@ -56,13 +56,27 @@ btreeLookup _name (Node (name, value) ltree rtree)
 eval :: BTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
+
 eval vars (Val x)      = Just x -- for values, just give the value directly
 eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
-eval vars (ToString x) = Just (StrVal (show x))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
   _                                  -> Nothing
 eval vars (InputExpr)  = Just Input
+eval vars (FunCall name args) = case name of
+  "toString" -> toString args
+    where toString :: [Expr] -> Maybe Value
+          toString (intExpression:[])  = case eval vars intExpression of
+            Just (IntVal i) -> (Just (StrVal (show i)))
+            _              -> Nothing
+  "toInt"    -> toInt args
+    where toInt :: [Expr] -> Maybe Value
+          toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
+          toInt _                      = Nothing
+  "toFloat"    -> toFlt args
+    where toFlt :: [Expr] -> Maybe Value
+          toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
+          toFlt _                      = Nothing
 eval vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
@@ -99,12 +113,13 @@ pExpr = (do symbol "input"
                  ||| do symbol "-"
                         e <- pExpr
                         return (Sub t e)
-                      ||| return t)
-        ||| (do s <- pStringExpr
-                return s)
+                     ||| do symbol "++"
+                            e <- pExpr
+                            return (Concat t e)
+                          ||| return t)
 
 pFactor :: Parser Expr
-pFactor = do f <- pFuncCall
+pFactor = do f <- pFunCall
              return f
           ||| do f <- float
                  return (Val (FltVal f))
@@ -116,6 +131,8 @@ pFactor = do f <- pFuncCall
                              e <- pExpr
                              symbol ")"
                              return e
+                          ||| do s <- pString
+                                 return s
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
@@ -134,12 +151,11 @@ pString = do char '"'
              char '"'
              return (Val (StrVal str))
 
-pStringExpr :: Parser Expr
-pStringExpr = do s <- pString
-                 do symbol "++"
-                    s2 <- pStringExpr
-                    return (Concat s s2)
-                  ||| return s
+
+-- Statement -> whileStmt | ifStmt | assignmentStmt | printStmt | quitStmt
+-- Statement -> whileStmt | ifStmt | assignmentStmt | functionCallStmt
+
+
 
 -- STATEMENT PARSER
 pStatement :: Parser Command
@@ -221,9 +237,9 @@ pArgs (x :xs) ys | x == NullVal = pArgs xs ys
                                      pArgs xs (i:ys)
 pArgs _ _ = failure
 
-pFuncCall :: Parser Expr
-pFuncCall = do p <- pFuncName initFunc
-               return (p)
+pFunCall :: Parser Expr
+pFunCall = do p <- pFuncName initFunc
+              return (p)
 
 data Compare = EQ | NE | GT | LT
 
@@ -238,4 +254,10 @@ pBoolExpr = (do symbol "("
                     return (Val (BoolVal False)))
 
 initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0])]
+initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]),
+            ("power", [IntVal 0]), ("toString", [IntVal 0]),
+            ("toInt", [StrVal ""]), ("toFloat", [FltVal 0.0])]
+
+-- A data decl for "library functions"
+  -- On second thought that would be a constraint and functions will not be able to be added after
+-- an array for all functions (including library and user defined)
