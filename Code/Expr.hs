@@ -27,8 +27,8 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | Quit          -- quit the program
-             | While Expr Command
-             | If Expr Command Command
+             | While Expr [Command]
+             | If Expr [Command] [Command]
   deriving Show
 
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
@@ -55,38 +55,52 @@ btreeLookup _name (Node (name, value) ltree rtree)
 eval :: BTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
+
 eval vars (Val x)      = Just x -- for values, just give the value directly
 eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
-eval vars (ToString x) = Just (StrVal (show x))
--- eval vars (ToInt x)    = Just (IntVal (read x :: Int))
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
-                              (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
-                              _                                  -> Nothing
-eval vars expr         = case (eval vars x, eval vars y) of
-                              (Just (FltVal f1), Just (FltVal f2)) -> Just (FltVal (func f1 f2))
-                              (Just (FltVal f), Just (IntVal i))   -> Just (FltVal (func f (fromIntegral i)))
-                              (Just (IntVal i), Just (FltVal f))   -> Just (FltVal (func (fromIntegral i) f))
-                              (Just (IntVal i1), Just (IntVal i2)) -> Just (IntVal (round (func (fromIntegral i1) (fromIntegral i2))))
-                              _                                    -> Nothing
-                              where
-                                (func, x, y) = case expr of
-                                  Add expr1 expr2 -> ((+), expr1, expr2)
-                                  Sub expr1 expr2 -> ((-), expr1, expr2)
-                                  Mul expr1 expr2 -> ((*), expr1, expr2)
-                                  Div expr1 expr2 -> ((/), expr1, expr2)
+  (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
+  _                                  -> Nothing
+eval vars (InputExpr)  = Just Input
+eval vars (FunCall name args) = case name of
+  "toString" -> toString args
+    where toString :: [Expr] -> Maybe Value
+          toString (intExpression:[])  = case eval vars intExpression of
+            Just (IntVal i) -> (Just (StrVal (show i)))
+            _              -> Nothing
+  "toInt"    -> toInt args
+    where toInt :: [Expr] -> Maybe Value
+          toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
+          toInt _                      = Nothing
+  "toFloat"    -> toFlt args
+    where toFlt :: [Expr] -> Maybe Value
+          toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
+          toFlt _                      = Nothing
+eval vars expr = case (eval vars x, eval vars y) of
+  (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
+  (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
+  (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
+  (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (round (func (fromIntegral a) (fromIntegral b))))
+  _                                  -> Nothing
+  where
+    (func, x, y) = case expr of
+      Add expr1 expr2 -> ((+), expr1, expr2)
+      Sub expr1 expr2 -> ((-), expr1, expr2)
+      Mul expr1 expr2 -> ((*), expr1, expr2)
+      Div expr1 expr2 -> ((/), expr1, expr2)
 
 -- COMMAND AND EXPRESSION PARSER
-pCommand :: Parser Command
-pCommand = do t <- identifier
-              symbol "="
-              e <- pExpr
-              return (Set t e)
-            ||| do string "print"
-                   space
-                   e <- pExpr
-                   return (Print e)
-            ||| do string "quit"
-                   return Quit
+-- pCommand :: Parser Command
+-- pCommand = do t <- identifier
+              -- symbol "="
+              -- e <- pExpr
+              -- return (Set t e)
+            -- ||| do string "print"
+                   -- space
+                   -- e <- pExpr
+                   -- return (Print e)
+                 -- ||| do string "quit"
+                        -- return Quit
 
 pExpr :: Parser Expr
 pExpr = (do symbol "input"
@@ -98,12 +112,13 @@ pExpr = (do symbol "input"
                  ||| do symbol "-"
                         e <- pExpr
                         return (Sub t e)
-                      ||| return t)
-        ||| (do s <- pStringExpr
-                return s)
+                     ||| do symbol "++"
+                            e <- pExpr
+                            return (Concat t e)
+                          ||| return t)
 
 pFactor :: Parser Expr
-pFactor = do f <- pFuncCall
+pFactor = do f <- pFunCall
              return f
           ||| do f <- float
                  return (Val (FltVal f))
@@ -115,6 +130,8 @@ pFactor = do f <- pFuncCall
                              e <- pExpr
                              symbol ")"
                              return e
+                          ||| do s <- pString
+                                 return s
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
@@ -133,12 +150,11 @@ pString = do char '"'
              char '"'
              return (Val (StrVal str))
 
-pStringExpr :: Parser Expr
-pStringExpr = do s <- pString
-                 do symbol "++"
-                    s2 <- pStringExpr
-                    return (Concat s s2)
-                  ||| return s
+
+-- Statement -> whileStmt | ifStmt | assignmentStmt | printStmt | quitStmt
+-- Statement -> whileStmt | ifStmt | assignmentStmt | functionCallStmt
+
+
 
 -- STATEMENT PARSER
 pStatement :: Parser Command
@@ -153,16 +169,22 @@ pStatement = (do s <- pIfStmt
              ||| (do s <- pQuitStmt
                      return (s))
 
+pStmtBlock :: Parser [Command]
+pStmtBlock = do symbol "{"
+                stmts <- many pStatement
+                symbol "}"
+                return stmts
+
 pIfStmt :: Parser Command
 pIfStmt = do string "if"
              space
              expression <- pBoolExpr
              string "then"
              space
-             statement <- pStatement
+             stmtBlock <- pStmtBlock
              string "else"
-             eStatement <- pStatement
-             return (If expression statement eStatement)
+             eStmtBlock <- pStmtBlock
+             return (If expression stmtBlock eStmtBlock)
 
 pWhileStmt :: Parser Command
 pWhileStmt = do string "while"
@@ -171,8 +193,8 @@ pWhileStmt = do string "while"
                 space
                 string "then"
                 space
-                statement <- pStatement
-                return (While expression statement)
+                stmtBlock <- pStmtBlock
+                return (While expression stmtBlock)
 
 pAssignmentStmt :: Parser Command
 pAssignmentStmt = do t <- identifier
@@ -212,10 +234,11 @@ pArgs (x :xs) ys | x == NullVal = pArgs xs ys
                  | otherwise    = do i <- pExpr
                                      symbol ","
                                      pArgs xs (i:ys)
+pArgs _ _ = failure
 
-pFuncCall :: Parser Expr
-pFuncCall = do p <- pFuncName initFunc
-               return (p)
+pFunCall :: Parser Expr
+pFunCall = do p <- pFuncName initFunc
+              return (p)
 
 data Compare = EQ | NE | GT | LT
 
@@ -230,4 +253,10 @@ pBoolExpr = (do symbol "("
                     return (Val (BoolVal False)))
 
 initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]), ("power", [IntVal 0])]
+initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]),
+            ("power", [IntVal 0]), ("toString", [IntVal 0]),
+            ("toInt", [StrVal ""]), ("toFloat", [FltVal 0.0])]
+
+-- A data decl for "library functions"
+  -- On second thought that would be a constraint and functions will not be able to be added after
+-- an array for all functions (including library and user defined)

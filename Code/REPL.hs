@@ -1,7 +1,6 @@
 module REPL where
 
 import System.Console.Haskeline
--- import Control.Monad.Trans
 import Expr
 import Parsing
 
@@ -71,7 +70,7 @@ repl st = do outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug messag
              case inp of
                 Nothing    -> return ()
                 Just input -> 
-                    case parse pCommand input of
+                    case parse pStatement input of
                         [(cmd, "")] -> -- Must parse entire input
                                 process st cmd
                         _ -> do outputStrLn "Parse error"
