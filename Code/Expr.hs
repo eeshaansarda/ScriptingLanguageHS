@@ -22,6 +22,10 @@ data Expr = Add Expr Expr
           | FunCall Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
           | InputExpr
 
+          | Not Expr
+          | And Expr Expr
+          | Or Expr Expr
+
   deriving Show
 
 -- These are the REPL commands
@@ -117,6 +121,8 @@ pExpr = (do symbol "input"
                             e <- pExpr
                             return (Concat t e)
                           ||| return t)
+        ||| (do b <- pBoolExpr
+                return b)
 
 pFactor :: Parser Expr
 pFactor = do f <- pFunCall
@@ -243,15 +249,32 @@ pFunCall = do p <- pFuncName initFunc
 
 data Compare = EQ | NE | GT | LT
 
+pBoolFact :: Parser Expr
+pBoolFact = (do symbol "True"
+                return (Val (BoolVal True))
+            ||| do symbol "False"
+                   return (Val (BoolVal False)))
+                ||| (do symbol "!"
+                        f <- pBoolFact
+                        return (Not f))
+                ||| (do symbol "("
+                        f <- pBoolFact
+                        symbol ")"
+                        return f)
+
+pBoolTerm :: Parser Expr
+pBoolTerm = do f <- pBoolFact
+               (do symbol "&&"
+                   f2 <- pBoolFact
+                   return (And f f2))
+                 ||| return f
+
 pBoolExpr :: Parser Expr
-pBoolExpr = (do symbol "("
-                symbol "True"
-                symbol ")"
-                return (Val (BoolVal True)))
-            ||| (do symbol "("
-                    symbol "False"
-                    symbol ")"
-                    return (Val (BoolVal False)))
+pBoolExpr = do f <- pBoolTerm
+               (do symbol "||"
+                   f2 <- pBoolTerm
+                   return (Or f f2))
+                 ||| return f
 
 initFunc :: [(String, [Value])]
 initFunc = [("input", [NullVal]), ("abs", [IntVal 0]), ("mod", [IntVal 0]),
