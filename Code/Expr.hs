@@ -118,8 +118,8 @@ floatOperations vars expr = case (eval vars x, eval vars y) of
 boolOperations :: BTree -> Expr -> Maybe Value
 boolOperations vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal  a), Just (FltVal  b)) -> Just (BoolVal (func a b))
-  (Just (IntVal  a), Just (IntVal  b)) -> Just (BoolVal (func a b))
-  (Just (BoolVal a), Just (BoolVal b)) -> Just (BoolVal (func a b))
+  (Just (IntVal  a), Just (IntVal  b)) -> Just (BoolVal (func (fromIntegral a) (fromIntegral b)))
+  (Just (BoolVal a), Just (BoolVal b)) -> Just (BoolVal (func (fromIntegral (fromEnum a)) (fromIntegral (fromEnum b))))
   _                                    -> Nothing
   --Just (BoolVal (func (eval vars x) (eval vars y)))
   where
