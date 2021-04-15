@@ -304,6 +304,14 @@ pBoolFactor = (do e <- pExpr
                       symbol "!="
                       e2 <- pExpr
                       return (Ne e e2))
+              ||| (do e <- pExpr
+                      symbol ">="
+                      e2 <- pExpr
+                      return (Gte e e2))
+              ||| (do e <- pExpr
+                      symbol "<="
+                      e2 <- pExpr
+                      return (Lte e e2))
 
 pBoolFact :: Parser Expr
 pBoolFact = (do symbol "True"
