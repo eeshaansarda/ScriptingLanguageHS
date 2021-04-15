@@ -88,25 +88,46 @@ eval vars (FunCall name args) = case name of
     where toFlt :: [Expr] -> Maybe Value
           toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
           toFlt _                      = Nothing
-eval vars expr
-  | expr == (Add _ _) || expr == (Sub _ _) ||
-    expr == (Mul _ _) || expr == (Div _ _) = case (eval vars x, eval vars y) of
+eval vars expr = case expr of
+  Add e e2 -> floatOperations vars expr
+  Sub e e2 -> floatOperations vars expr
+  Mul e e2 -> floatOperations vars expr
+  Div e e2 -> floatOperations vars expr
+  Lt  e e2 -> boolOperations vars expr
+  Gt  e e2 -> boolOperations vars expr
+  Lte e e2 -> boolOperations vars expr
+  Gte e e2 -> boolOperations vars expr
+  Eq  e e2 -> boolOperations vars expr
+  Ne  e e2 -> boolOperations vars expr
+  _        -> Nothing
+
+floatOperations :: BTree -> Expr -> Maybe Value
+floatOperations vars expr = case (eval vars x, eval vars y) of
   (Just (FltVal a), Just (FltVal b)) -> Just (FltVal (func a b))
   (Just (FltVal f), Just (IntVal i)) -> Just (FltVal (func f (fromIntegral i)))
   (Just (IntVal i), Just (FltVal f)) -> Just (FltVal (func (fromIntegral i) f))
   (Just (IntVal a), Just (IntVal b)) -> Just (IntVal (round (func (fromIntegral a) (fromIntegral b))))
   _                                  -> Nothing
-  | otherwise = Just (BoolVal (func (eval vars x) (eval vars y))
   where
     (func, x, y) = case expr of
       Add expr1 expr2 -> ((+), expr1, expr2)
       Sub expr1 expr2 -> ((-), expr1, expr2)
       Mul expr1 expr2 -> ((*), expr1, expr2)
       Div expr1 expr2 -> ((/), expr1, expr2)
-      Lt  expr1 expr2 -> ((<), expr1, expr2)
-      Gt  expr1 expr2 -> ((>), expr1, expr2)
-      Lte  expr1 expr2 -> ((<=), expr1, expr2)
-      Gte  expr1 expr2 -> ((>=), expr1, expr2)
+
+boolOperations :: BTree -> Expr -> Maybe Value
+boolOperations vars expr = case (eval vars x, eval vars y) of
+  (Just (FltVal  a), Just (FltVal  b)) -> Just (BoolVal (func a b))
+  (Just (IntVal  a), Just (IntVal  b)) -> Just (BoolVal (func a b))
+  (Just (BoolVal a), Just (BoolVal b)) -> Just (BoolVal (func a b))
+  _                                    -> Nothing
+  --Just (BoolVal (func (eval vars x) (eval vars y)))
+  where
+    (func, x, y) = case expr of
+      Lt  expr1 expr2 -> ((<),  expr1, expr2)
+      Gt  expr1 expr2 -> ((>),  expr1, expr2)
+      Lte expr1 expr2 -> ((<=), expr1, expr2)
+      Gte expr1 expr2 -> ((>=), expr1, expr2)
       Eq  expr1 expr2 -> ((==), expr1, expr2)
       Ne  expr1 expr2 -> ((/=), expr1, expr2)
 
