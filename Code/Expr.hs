@@ -168,7 +168,7 @@ pAbs = do symbol "|"
 pPower :: Parser Expr
 pPower = do f <- pFactor
             do symbol "^"
-               p <- pFactor
+               p <- pPower
                return (Pow f p)
              ||| return f
 
