@@ -32,8 +32,6 @@ data Expr = Add Expr Expr
           | Lt Expr Expr
           | Gte Expr Expr
           | Lte Expr Expr
-
-
   deriving Show
 
 -- These are the REPL commands
@@ -46,7 +44,15 @@ data Command = Set Name Expr -- assign an expression to a variable name
   deriving Show
 
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
-  deriving (Show, Eq)
+  deriving Eq
+
+instance Show Value where
+  show (IntVal i)  = show i
+  show (FltVal f)  = show f
+  show (StrVal s)  = show s
+  show (BoolVal b) = show b
+  show NullVal     = "NULL"
+  show Input       = "INPUT"
 
 data BTree = Leaf | Node (Name, Value) BTree BTree
 
