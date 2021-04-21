@@ -42,6 +42,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Quit          -- quit the program
              | While Expr [Command]
              | If Expr [Command] [Command]
+             | Import FilePath
   deriving Show
 
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
@@ -219,9 +220,9 @@ pPower = do f <- pFactor
 
 -- STRING PARSER
 pString :: Parser Expr
-pString = do char '"'
-             str <- many (sat (/= '"'))
-             char '"'
+pString = do ch <- char '"' ||| char '\''
+             str <- many (sat (/= ch))
+             char ch
              return (Val (StrVal str))
 
 
@@ -241,6 +242,8 @@ pStatement = (do s <- pIfStmt
              ||| (do s <- pPrintStmt
                      return (s))
              ||| (do s <- pQuitStmt
+                     return (s))
+             ||| (do s <- pImportStmt
                      return (s))
 
 pStmtBlock :: Parser [Command]
@@ -285,6 +288,14 @@ pPrintStmt = do string "print"
 pQuitStmt :: Parser Command
 pQuitStmt = do string "quit"
                return Quit
+
+pImportStmt :: Parser Command
+pImportStmt = do string "import"
+                 space
+                 ch <- char '"' ||| char '\''
+                 filepath <- many (sat (/= ch))
+                 char ch
+                 return (Import filepath)
 
 -- FUNCTION PARSER 
 pFuncName :: [(String, [Value])] -> Parser Expr

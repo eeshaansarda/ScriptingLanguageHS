@@ -3,11 +3,12 @@ module REPL where
 import System.Console.Haskeline
 import Expr
 import Parsing
+import Control.Monad.IO.Class
 
-data State = State {vars :: BTree}
+data State = State {vars :: BTree, commands :: [String]}
 
 initState :: State
-initState = State Leaf
+initState = State Leaf []
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -62,6 +63,8 @@ processRepl st (Set var e)  = do st' <- process st (Set var e)
 processRepl st (Print e)    = do st' <- process st (Print e)
                                  repl st'
 processRepl st (Quit)       = outputStrLn "Bye"
+processRepl st (Import filepath) = do text <- liftIO (readFile filepath)
+                                      repl (st {commands = lines text})
 processRepl st (If e b1 b2) = case eval (vars st) e of
   Just (BoolVal True)  -> do st' <- processBlock st b1
                              repl st'
@@ -91,13 +94,19 @@ processBlock st _           = return st
 
 repl :: State -> InputT IO ()
 repl st = do outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug message, to be removed in the future
-             inp <- getInputLine ("> ")
+             inp <- case commands st of
+               [] -> getInputLine ("> ")
+               (x:xs) -> return (Just x)
              -- inp <- getLine
              case inp of
                 Nothing    -> return ()
                 Just input -> 
                     case parse pStatement input of
                         [(cmd, "")] -> -- Must parse entire input
-                                processRepl st cmd
+                                processRepl st' cmd
                         _ -> do outputStrLn "Parse error"
-                                repl st
+                                repl st'
+             where st' = case commands st of
+                              [] -> st
+                              (x:xs) -> st {commands = xs}
+
