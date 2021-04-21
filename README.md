@@ -11,6 +11,9 @@
 
 ## Easy Requirements
 - [ ] Implement Quickcheck
+  - [ ] Try migrating to stack to sort out all the damned cabal library errors and so I can just run the test suite without opening ghci
+  - [ ] Float bug: can't parse floats in the form "1.0e-2"
+  - [ ] String bug: can't parse backslash \
 - [x] Implement functionality for abs, mod, and power
 - [x] Extend parser to support negative numbers
 - [x] Support floats
