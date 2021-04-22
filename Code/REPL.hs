@@ -60,6 +60,29 @@ process st (Print e) =
         outputStrLn (show eval_res)
     -- Print the result of evaluation
     return st
+process st (If e b1 b2) = case eval (vars st) e of
+  Just (BoolVal True)  -> do st' <- processBlock st b1
+                             return st'
+  Just (BoolVal False) -> do st' <- processBlock st b2
+                             return st'
+  _                    -> do outputStrLn "Invalid boolean value"
+                             return st
+process st (While e block) = loop st block e
+  where loop :: State -> [Command] -> Expr -> InputT StateM State
+        loop st cmds expr = case eval (vars st) expr of
+          Just (BoolVal True)  -> do st' <- processBlock st cmds
+                                     loop st' cmds expr
+          Just (BoolVal False) -> return st
+          _                    -> do outputStrLn "Invalid boolean value"
+                                     return st
+
+processBlock :: State -> [Command] -> InputT StateM State
+processBlock st (cmd: [])   = do st' <- process st cmd
+                                 return st'
+processBlock st (cmd: cmds) = do st' <- process st cmd
+                                 processBlock st' cmds
+processBlock st _           = return st
+
 
 -- processRepl :: State -> Command -> InputT IO ()
 -- processRepl st (Set var e)  = do st' <- process st (Set var e)
@@ -83,13 +106,6 @@ process st (Print e) =
 --           Just (BoolVal False) -> repl st
 --           _                    -> outputStrLn "Invalid boolean value"
 
-
--- processBlock :: State -> [Command] -> InputT IO(State)
--- processBlock st (cmd: [])   = do st' <- process st cmd
---                                  return st'
--- processBlock st (cmd: cmds) = do st' <- process st cmd
---                                  processBlock st' cmds
--- processBlock st _           = return st
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
