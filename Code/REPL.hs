@@ -71,6 +71,10 @@ process st (Print e) =
   do
     case eval (vars st) e of
       Nothing -> outputStrLn ("Invalid expression")
+      Just Input -> do inpVal <- getInputLine ("Input > ")
+                       case inpVal of
+                         Just inp -> outputStrLn inp
+                         Nothing -> outputStrLn ""
       Just eval_res -> do
         outputStrLn (show eval_res)
     -- Print the result of evaluation
