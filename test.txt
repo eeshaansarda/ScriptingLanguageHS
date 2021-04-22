@@ -15,4 +15,5 @@ print e
 e = 3
 print e
 
+import "test2.txt"
 r = 9

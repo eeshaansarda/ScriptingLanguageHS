@@ -104,6 +104,7 @@ repl = do st <- lift get
             (x:xs) -> do lift $ put st {commands = xs}
                          return (Just x)
           -- inp <- getLine
+          st <- lift get
           case inp of
             Nothing    -> return ()
             Just input -> 
@@ -115,8 +116,11 @@ repl = do st <- lift get
                         (Set var e) -> do st' <- process st cmd
                                           lift $ put st' {wordList = var : wordList st'}
                                           repl
+                        (Import filepath) -> do text <- lift $ lift (readFile filepath)
+                                                lift $ put st {commands = lines text ++ commands st}
+                                                repl
                         _ -> do st' <- process st cmd
                                 lift $ put st'
                                 repl
                     _ -> do outputStrLn "Parse error"
-                            return ()
+                            repl
