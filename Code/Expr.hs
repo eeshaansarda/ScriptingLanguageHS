@@ -110,12 +110,13 @@ eval vars expr = case expr of
   Mul e e2 -> floatOperations vars expr
   Div e e2 -> floatOperations vars expr
   Pow e e2 -> floatOperations vars expr
-  Lt  e e2 -> boolOperations vars expr
-  Gt  e e2 -> boolOperations vars expr
-  Lte e e2 -> boolOperations vars expr
-  Gte e e2 -> boolOperations vars expr
-  Eq  e e2 -> boolOperations vars expr
-  Ne  e e2 -> boolOperations vars expr
+  Lt  e e2 -> boolOperations  vars expr
+  Gt  e e2 -> boolOperations  vars expr
+  Lte e e2 -> boolOperations  vars expr
+  Gte e e2 -> boolOperations  vars expr
+  Eq  e e2 -> boolOperations  vars expr
+  Ne  e e2 -> boolOperations  vars expr
+  Not e    -> notBoolOp       vars expr
   _        -> Nothing
 
 floatOperations :: BTree -> Expr -> Maybe Value
@@ -149,6 +150,12 @@ boolOperations vars expr = case (eval vars x, eval vars y) of
       Gte expr1 expr2 -> ((>=), expr1, expr2)
       Eq  expr1 expr2 -> ((==), expr1, expr2)
       Ne  expr1 expr2 -> ((/=), expr1, expr2)
+
+notBoolOp :: BTree -> Expr -> Maybe Value
+notBoolOp vars (Not x) = case eval vars x of
+  Just (BoolVal  a) -> Just (BoolVal (not a))
+  _ -> Nothing
+notBoolOp _ _ = Nothing
 
 -- COMMAND AND EXPRESSION PARSER
 -- pCommand :: Parser Command
