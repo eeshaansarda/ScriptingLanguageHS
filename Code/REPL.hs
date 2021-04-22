@@ -69,12 +69,12 @@ process st (If e b1 b2) = case eval (vars st) e of
                              return st
 process st (While e block) = loop st block e
   where loop :: State -> [Command] -> Expr -> InputT StateM State
-        loop st cmds expr = case eval (vars st) expr of
-          Just (BoolVal True)  -> do st' <- processBlock st cmds
+        loop state cmds expr = case eval (vars state) expr of
+          Just (BoolVal True)  -> do st' <- processBlock state cmds
                                      loop st' cmds expr
-          Just (BoolVal False) -> return st
+          Just (BoolVal False) -> return state
           _                    -> do outputStrLn "Invalid boolean value"
-                                     return st
+                                     return state
 
 processBlock :: State -> [Command] -> InputT StateM State
 processBlock st (cmd: [])   = do st' <- process st cmd
