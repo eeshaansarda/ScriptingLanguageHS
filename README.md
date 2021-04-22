@@ -12,8 +12,10 @@
 ## Easy Requirements
 - [ ] Implement Quickcheck
   - [ ] Try migrating to stack to sort out all the damned cabal library errors and so I can just run the test suite without opening ghci
+  - [ ] Try creating better generators: a string generator that just creates 
   - [ ] Float bug: can't parse floats in the form "1.0e-2"
   - [ ] String bug: can't parse backslash \
+  - [ ] Concat bug: enters infinite loop when concatenating strings
 - [x] Implement functionality for abs, mod, and power
 - [x] Extend parser to support negative numbers
 - [x] Support floats

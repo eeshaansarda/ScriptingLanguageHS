@@ -8,18 +8,31 @@ import System.Exit (exitFailure)
 import Test.QuickCheck
 import Test.QuickCheck.All
 
--- Type generators - https://stackoverflow.com/questions/20934506/haskell-quickcheck-how-to-generate-only-printable-strings
+-- Type generators 
+-- https://stackoverflow.com/questions/20934506/haskell-quickcheck-how-to-generate-only-printable-strings
 data Operator = Operator String 
   deriving Show
 
 instance Arbitrary Operator where 
-    arbitrary = oneof [return (Operator "+"),
-                       return (Operator "-"),
-                       return (Operator "*"),
-                       return (Operator "/"),
-                       return (Operator "%"),
-                       return (Operator "^")]
+  arbitrary = do e <- elements "+-*/%^"
+                 return (Operator $ filter (/='\'') $ show e)
 
+-- http://hackage.haskell.org/package/QuickCheck-2.14.2/docs/Test-QuickCheck.html#g:8
+data Space = Space String
+  deriving Show
+
+instance Arbitrary Space where
+  arbitrary = do x <- listOf $ elements " "
+                 return (Space x)
+
+-- data EvalOp = Add Expr Expr | Sub Expr Expr | Mul Expr Expr | Div Expr Expr
+--   deriving Show
+
+-- instance Arbitrary EvalOp where
+--   arbitrary = do i <- arbitrarySizedIntegral
+--                  f <- arbitrarySizedFractional
+--                  o <- oneof [return (Add )]
+--                  return 
 
 -- PARSER TESTS - checks that parser converts strings to appropriate type representation
 
@@ -41,39 +54,73 @@ prop_parseFloat flt = case parse pExpr (show flt) of
                            [(Val (FltVal a), "")] -> True
                            _                      -> False
 
--- Checks that binary operators (+ - * / % ^) are correctly parsed for ints
-prop_parseOperator :: Int -> Int -> Operator -> Bool
-prop_parseOperator a b (Operator o) = case parse pExpr ((show a) ++ o ++ (show b)) of
-                                           [(Add a b, "")] -> True
-                                           [(Sub a b, "")] -> True
-                                           [(Mul a b, "")] -> True
-                                           [(Div a b, "")] -> True
-                                           [(Mod a b, "")] -> True
-                                           [(Pow a b, "")] -> True
-                                           _               -> False
+-- Checks that binary operators (+ - * / % ^) are correctly parsed for ints (ignoring whitespace)
+prop_parseOperatorInt :: Int -> Int -> Operator -> Bool
+prop_parseOperatorInt a b (Operator o) = case parse pExpr ((show a) ++ o ++ (show b)) of
+                                              [(Add a b, "")] -> True
+                                              [(Sub a b, "")] -> True
+                                              [(Mul a b, "")] -> True
+                                              [(Div a b, "")] -> True
+                                              [(Mod a b, "")] -> True
+                                              [(Pow a b, "")] -> True
+                                              _               -> False
 
--- Checks that binary operators (+ - * / % ^) are correctly parsed for floats
-prop_parseOperator :: Float -> Float -> Operator -> Bool
-prop_parseOperator a b (Operator o) = case parse pExpr ((show a) ++ o ++ (show b)) of
-                                           [(Add a b, "")] -> True
-                                           [(Sub a b, "")] -> True
-                                           [(Mul a b, "")] -> True
-                                           [(Div a b, "")] -> True
-                                           [(Mod a b, "")] -> True
-                                           [(Pow a b, "")] -> True
-                                           _               -> False
+-- Checks that binary operators (+ - * / % ^) are correctly parsed for floats (ignoring whitespace)
+prop_parseOperatorFlt :: Float -> Float -> Operator -> Bool
+prop_parseOperatorFlt a b (Operator o) = case parse pExpr ((show a) ++ o ++ (show b)) of
+                                              [(Add a b, "")] -> True
+                                              [(Sub a b, "")] -> True
+                                              [(Mul a b, "")] -> True
+                                              [(Div a b, "")] -> True
+                                              [(Mod a b, "")] -> True
+                                              [(Pow a b, "")] -> True
+                                              _               -> False
 
 -- Checks that Abs gets correctly parsed for ints
-prop_parseAbs :: Int -> Bool
-prop_parseAbs int = case parse pExpr ("|" ++ show int ++ "|") of -- TODO try and make valid arbitrary expressions to put in the middle?
+prop_parseAbsInt :: Int -> Bool
+prop_parseAbsInt int = case parse pExpr ("|" ++ show int ++ "|") of
                          [(Abs a, "")] -> True
                          _             -> False
 
 -- Checks that Abs gets correctly parsed for floats
-prop_parseAbs :: Float -> Bool
-prop_parseAbs flt = case parse pExpr ("|" ++ show flt ++ "|") of -- TODO try and make valid arbitrary expressions to put in the middle?
+prop_parseAbsFlt :: Float -> Bool
+prop_parseAbsFlt flt = case parse pExpr ("|" ++ show flt ++ "|") of
                          [(Abs a, "")] -> True
                          _             -> False
+
+-- Checks that concatenate correctly parses
+prop_parseConcat :: String -> String -> Bool
+prop_parseConcat str1 str2 = case parse pExpr ("\"" ++ str1 ++ "\"" ++ "++" ++  "\"" ++ str2 ++ "\"") of
+                                  [(Concat a b, "")] -> True
+                                  _                  -> False
+
+
+-- EVAL TESTS - checks that eval operates correctly
+
+-- Checks that eval converts ints to floats for Add
+prop_evalAddConvert :: Int -> Float -> Bool
+prop_evalAddConvert i f = case eval Leaf (Add (Val (IntVal i)) (Val(FltVal f))) of 
+                               Just (FltVal a) -> True 
+                               _               -> False
+
+-- Checks that eval converts ints to floats for Sub
+prop_evalSubConvert :: Int -> Float -> Bool
+prop_evalSubConvert i f = case eval Leaf (Sub (Val (IntVal i)) (Val(FltVal f))) of 
+                               Just (FltVal a) -> True 
+                               _               -> False
+
+-- Checks that eval converts ints to floats for Mul
+prop_evalMulConvert :: Int -> Float -> Bool
+prop_evalMulConvert i f = case eval Leaf (Mul (Val (IntVal i)) (Val(FltVal f))) of 
+                               Just (FltVal a) -> True 
+                               _               -> False
+
+-- Checks that eval always returns floats for Div
+prop_evalDivConvert :: Int -> Int -> Bool
+prop_evalDivConvert i1 i2 = if i2 == 0 then True else -- Need a better way to filter out divide by zero
+                            case eval Leaf (Div (Val (IntVal i1)) (Val (IntVal i2)) ) of 
+                                 Just (FltVal a) -> True 
+                                 _               -> False
 
 return []
 runTests = $quickCheckAll
