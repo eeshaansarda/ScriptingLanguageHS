@@ -11,7 +11,7 @@ type StateM = StateT State IO
 type InputM = InputT StateM
 data State = State {vars :: BTree, commands :: [String],
                     functions :: [(Name, [Name], [Command])],
-                    scope :: Maybe State, wordList :: [String]}
+                    wordList :: [String]}
 
 -- Functions that can be implemented in this "language"
 -- The others will go direct into eval
@@ -21,10 +21,10 @@ initFunc = [("printDouble", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))])]
             --(Fun "printNTimes", ["a", "n"], [Print (Mul (Var "a") 2)])]
 
 initCompletionList :: [String]
-initCompletionList = ["False", "True", "else", "if", "import", "print", "quit", "toFloat(", "toInt(", "toString(", "while", "fun"]
+initCompletionList = ["False", "True", "else", "if", "import", "print", "quit", "toFloat(", "toInt(", "toString(", "while", "fun", "printDouble("]
 
 initState :: State
-initState = State Leaf [] initFunc Nothing initCompleteionList
+initState = State Leaf [] initFunc initCompletionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -177,6 +177,9 @@ repl = do st <- lift get
                                           repl
                         (Import filepath) -> do text <- lift $ lift (readFile filepath)
                                                 lift $ put st {commands = lines text ++ commands st}
+                                                repl
+                        (Fun name _ _)    -> do st' <- process st cmd
+                                                lift $ put st' {wordList = name : wordList st'}
                                                 repl
                         _ -> do st' <- process st cmd
                                 lift $ put st'
