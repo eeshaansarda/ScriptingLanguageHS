@@ -41,6 +41,9 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | While Expr [Command]
              | If Expr [Command] [Command]
              | Import FilePath
+             | Fun Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
+             | VoidFunCall Name [Expr]
+             | Return Expr
   deriving Show
 
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
@@ -258,6 +261,8 @@ pStatement = (do s <- pIfStmt
                      return (s))
              ||| (do s <- pImportStmt
                      return (s))
+             ||| (do s <- pVoidFunCall
+                     return (s))
 
 pStmtBlock :: Parser [Command]
 pStmtBlock = do symbol "{"
@@ -269,8 +274,6 @@ pIfStmt :: Parser Command
 pIfStmt = do string "if"
              space
              expression <- pBoolExpr
-             string "then"
-             space
              stmtBlock <- pStmtBlock
              string "else"
              eStmtBlock <- pStmtBlock
@@ -280,8 +283,6 @@ pWhileStmt :: Parser Command
 pWhileStmt = do string "while"
                 space
                 expression <- pBoolExpr
-                space
-                string "then"
                 space
                 stmtBlock <- pStmtBlock
                 return (While expression stmtBlock)
@@ -310,33 +311,53 @@ pImportStmt = do string "import"
                  char ch
                  return (Import filepath)
 
+pReturnStmt :: Parser Command
+pReturnStmt = do string "return"
+                 space
+                 e <- pExpr
+                 return (Return e)
+
 -- FUNCTION PARSER 
-pFuncName :: [(String, [Value])] -> Parser Expr
-pFuncName [] = failure
-pFuncName ((x, x2):xs) = do name <- symbol x
-                            args <- pFuncArg x2
-                            return (FunCall name args)
-                            ||| pFuncName xs
-
-pFuncArg :: [Value] -> Parser [Expr]
-pFuncArg xs = do symbol "("
-                 i <- (pArgs xs [])
-                 symbol ")"
-                 return (i)
-
-pArgs :: [Value] -> [Expr] -> Parser [Expr]
-pArgs (x :[]) ys | x == NullVal = return ys
-                 | otherwise = do i <- pExpr
-                                  return (i:ys)
-pArgs (x :xs) ys | x == NullVal = pArgs xs ys
-                 | otherwise    = do i <- pExpr
-                                     symbol ","
-                                     pArgs xs (i:ys)
-pArgs _ _ = failure
-
 pFunCall :: Parser Expr
-pFunCall = do p <- pFuncName initFunc
-              return (p)
+pFunCall = do name <- identifier
+              args <- pFunCallArgs
+              return (FunCall name args)
+
+pVoidFunCall :: Parser Command
+pVoidFunCall = do name <- identifier
+                  args <- pFunCallArgs
+                  return (VoidFunCall name args)
+
+pFunCallArgs :: Parser [Expr]
+pFunCallArgs = do symbol "("
+                  i <- (pCSExpressions [])
+                  symbol ")"
+                  return (i)
+
+-- Comma seperated expressions
+pCSExpressions :: [Expr] -> Parser [Expr]
+pCSExpressions [] = do i <- pExpr
+                       return (i:[])
+pCSExpressions ys = do symbol ","
+                       i <- pExpr
+                       pCSExpressions (i:ys)
+
+
+-- For function calls, store the previous state, execute the function, restore the state, and then update the state (with the function results)
+pFun :: Parser Command
+pFun = do name <- identifier
+          symbol "("
+          vars <- pCSVar []
+          symbol ")"
+          commands <- pStmtBlock -- last statement be return?
+          return (Fun name vars commands)
+
+pCSVar :: [Name] -> Parser [Name]
+pCSVar [] = do i <- identifier
+               return (i:[])
+pCSVar ys = do symbol ","
+               i <- identifier
+               pCSVar (i:ys)
 
 -- TODO Sorry for the bad naming choice
 -- please search and replace if possible
@@ -394,10 +415,6 @@ pBoolExpr = do f <- pBoolTerm
                    f2 <- pBoolTerm
                    return (Or f f2))
                  ||| return f
-
-initFunc :: [(String, [Value])]
-initFunc = [("input", [NullVal]), ("toString", [IntVal 0]),
-            ("toInt", [StrVal ""]), ("toFloat", [FltVal 0.0])]
 
 -- A data decl for "library functions"
   -- On second thought that would be a constraint and functions will not be able to be added after

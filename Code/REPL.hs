@@ -9,10 +9,19 @@ import Control.Monad.State.Strict (get, put, runStateT, StateT)
 
 type StateM = StateT State IO
 type InputM = InputT StateM
-data State = State {vars :: BTree, commands :: [String], wordList :: [String]}
+data State = State {vars :: BTree, commands :: [String],
+                    functions :: [(Name, [Name], [Command])],
+                    scope :: Maybe State, wordList :: [String]}
+
+-- Functions that can be implemented in this "language"
+-- The others will go direct into eval
+-- no return as of now
+initFunc :: [(Name, [Name], [Command])]
+initFunc = [("printDouble", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))])]
+            --(Fun "printNTimes", ["a", "n"], [Print (Mul (Var "a") 2)])]
 
 initState :: State
-initState = State Leaf [] ["False", "True", "else", "if", "import", "print", "quit", "then", "toFloat(", "toInt(", "toString(", "while"]
+initState = State Leaf [] initFunc Nothing ["False", "True", "else", "if", "import", "print", "quit", "then", "toFloat(", "toInt(", "toString(", "while"]
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -38,6 +47,12 @@ dropVar _name (Node (name, value) ltree rtree)
           largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
             Node (name_, value_) _ Leaf -> (name_, value_)
             Node (_, _) _ rtree -> largestVar rtree
+
+updateFuns :: Name -> [Name] -> [Command] -> [(Name, [Name], [Command])] -> [(Name, [Name], [Command])]
+updateFuns name _vars _commands [] = [(name, _vars, _commands)]
+updateFuns name _vars _commands ((n, v, c): funs)
+  | name == n = (name, _vars, _commands) : funs
+  | otherwise = (n, v, c) : updateFuns name _vars _commands funs
 
 process :: State -> Command -> InputT StateM State
 process st (Set var e) =
@@ -75,6 +90,8 @@ process st (While e block) = loop st block e
           Just (BoolVal False) -> return state
           _                    -> do outputStrLn "Invalid boolean value"
                                      return state
+process st (Fun name vars commands) = return st {functions = updateFuns name vars commands (functions st)}
+-- TODO process st (VoidFunCall name expr) =
 
 processBlock :: State -> [Command] -> InputT StateM State
 processBlock st (cmd: [])   = do st' <- process st cmd
