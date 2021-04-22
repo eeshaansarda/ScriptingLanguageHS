@@ -91,7 +91,21 @@ process st (While e block) = loop st block e
           _                    -> do outputStrLn "Invalid boolean value"
                                      return state
 process st (Fun name vars commands) = return st {functions = updateFuns name vars commands (functions st)}
--- TODO process st (VoidFunCall name expr) =
+process st (VoidFunCall name exprs) = case fun of
+  [] -> return st
+  [(fname, vnames, commands)] -> if (length exprs == length vnames && blockIsVoid commands)
+                                    then do sState <- assignValues scopedState vnames exprs
+                                            processBlock sState commands
+                                            return st
+                                 else return st
+  where scopedState :: State
+        scopedState = st
+        fun :: [(Name, [Name], [Command])]
+        fun = filter (\(x, _, _) -> x == name) (functions st)
+        assignValues :: State -> [Name] -> [Expr] -> InputT StateM State
+        assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
+                                              assignValues state' vs es
+        assignValues state []     []     = return state
 
 processBlock :: State -> [Command] -> InputT StateM State
 processBlock st (cmd: [])   = do st' <- process st cmd
@@ -100,6 +114,10 @@ processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
 
+blockIsVoid :: [Command] -> Bool
+blockIsVoid []            = True
+blockIsVoid (Return x: _) = False
+blockIsVoid (x: xs)       = blockIsVoid xs
 
 -- processRepl :: State -> Command -> InputT IO ()
 -- processRepl st (Set var e)  = do st' <- process st (Set var e)
@@ -132,6 +150,7 @@ processBlock st _           = return st
 repl :: InputM ()
 repl = do st <- lift get
           outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug message, to be removed in the future
+          outputStrLn ("Functions: " ++ show (functions st)) -- TODO: debug message, to be removed in the future
           inp <- case commands st of
             [] -> getInputLine ("> ")
             (x:xs) -> do lift $ put st {commands = xs}

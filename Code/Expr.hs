@@ -255,13 +255,15 @@ pStatement = (do s <- pIfStmt
                      return (s))
              ||| (do s <- pAssignmentStmt
                      return (s))
-             ||| (do s <- pPrintStmt
+             ||| (do s <- pVoidFunCall
+                     return (s))
+             ||| (do s <- pPrintStmt -- TODO a function like printHello will not work due to this
                      return (s))
              ||| (do s <- pQuitStmt
                      return (s))
              ||| (do s <- pImportStmt
                      return (s))
-             ||| (do s <- pVoidFunCall
+             ||| (do s <- pFun
                      return (s))
 
 pStmtBlock :: Parser [Command]
@@ -331,33 +333,46 @@ pVoidFunCall = do name <- identifier
 pFunCallArgs :: Parser [Expr]
 pFunCallArgs = do symbol "("
                   i <- (pCSExpressions [])
-                  symbol ")"
                   return (i)
 
 -- Comma seperated expressions
 pCSExpressions :: [Expr] -> Parser [Expr]
-pCSExpressions [] = do i <- pExpr
-                       return (i:[])
-pCSExpressions ys = do symbol ","
-                       i <- pExpr
-                       pCSExpressions (i:ys)
+pCSExpressions [] = (do symbol ")"
+                        return [])
+                       ||| (do i <- pExpr
+                               pCSExpressions (i:[]))
+pCSExpressions ys = (do symbol ","
+                        i <- pExpr
+                        pCSExpressions (i:ys))
+                       ||| (do symbol ")"
+                               return (reverse ys))
 
 
 -- For function calls, store the previous state, execute the function, restore the state, and then update the state (with the function results)
 pFun :: Parser Command
-pFun = do name <- identifier
+pFun = do string "fun"
+          name <- identifier
           symbol "("
-          vars <- pCSVar []
-          symbol ")"
+          vars <- pCSVar [] -- This absorbs the ")"
           commands <- pStmtBlock -- last statement be return?
           return (Fun name vars commands)
 
 pCSVar :: [Name] -> Parser [Name]
-pCSVar [] = do i <- identifier
-               return (i:[])
-pCSVar ys = do symbol ","
-               i <- identifier
-               pCSVar (i:ys)
+pCSVar [] = (do symbol ")"
+                return [])
+               ||| (do i <- identifier
+                       pCSVar (i:[]))
+pCSVar ys = (do symbol ","
+                i <- identifier
+                pCSVar (i:ys))
+               ||| (do symbol ")"
+                       return (reverse ys))
+-- pCSVar :: [Name] -> Parser [Name]
+-- pCSVar [] = do i <- identifier
+               -- return (i:[])
+-- pCSVar ys = do symbol ","
+               -- i <- identifier
+               -- pCSVar (i:ys)
 
 -- TODO Sorry for the bad naming choice
 -- please search and replace if possible
