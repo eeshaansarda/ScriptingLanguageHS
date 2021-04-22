@@ -64,7 +64,7 @@ processRepl st (Print e)    = do st' <- process st (Print e)
                                  repl st'
 processRepl st (Quit)       = outputStrLn "Bye"
 processRepl st (Import filepath) = do text <- liftIO (readFile filepath)
-                                      repl (st {commands = lines text})
+                                      repl (st {commands = lines text ++ commands st})
 processRepl st (If e b1 b2) = case eval (vars st) e of
   Just (BoolVal True)  -> do st' <- processBlock st b1
                              repl st'
