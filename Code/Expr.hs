@@ -253,15 +253,15 @@ pStatement = (do s <- pIfStmt
                      return (s))
              ||| (do s <- pAssignmentStmt
                      return (s))
-             ||| (do s <- pVoidFunCall
-                     return (s))
-             ||| (do s <- pPrintStmt -- TODO a function like printHello will not work due to this
+             ||| (do s <- pPrintStmt
                      return (s))
              ||| (do s <- pQuitStmt
                      return (s))
              ||| (do s <- pImportStmt
                      return (s))
              ||| (do s <- pFun
+                     return (s))
+             ||| (do s <- pVoidFunCall
                      return (s))
 
 pStmtBlock :: Parser [Command]

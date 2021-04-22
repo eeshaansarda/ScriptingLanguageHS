@@ -20,8 +20,11 @@ initFunc :: [(Name, [Name], [Command])]
 initFunc = [("printDouble", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))])]
             --(Fun "printNTimes", ["a", "n"], [Print (Mul (Var "a") 2)])]
 
+initCompletionList :: [String]
+initCompletionList = ["False", "True", "else", "if", "import", "print", "quit", "toFloat(", "toInt(", "toString(", "while", "fun"]
+
 initState :: State
-initState = State Leaf [] initFunc Nothing ["False", "True", "else", "if", "import", "print", "quit", "then", "toFloat(", "toInt(", "toString(", "while"]
+initState = State Leaf [] initFunc Nothing initCompleteionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
