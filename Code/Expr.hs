@@ -187,8 +187,6 @@ pExpr = (do symbol "input"
                             e <- pExpr
                             return (Concat t e)
                           ||| return t)
-        ||| (do b <- pBoolExpr
-                return b)
 
 pFactor :: Parser Expr
 pFactor = do f <- pFunCall
@@ -292,14 +290,18 @@ pWhileStmt = do string "while"
 pAssignmentStmt :: Parser Command
 pAssignmentStmt = do t <- identifier
                      symbol "="
-                     e <- pExpr
-                     return (Set t e)
+                     (do e <- pExpr
+                         return (Set t e)
+                       ||| do e <- pBoolExpr
+                              return (Set t e))
 
 pPrintStmt :: Parser Command
 pPrintStmt = do string "print"
                 space
-                e <- pExpr
-                return (Print e)
+                (do e <- pExpr
+                    return (Print e)
+                 ||| do e <- pBoolExpr
+                        return (Print e))
 
 pQuitStmt :: Parser Command
 pQuitStmt = do string "quit"
