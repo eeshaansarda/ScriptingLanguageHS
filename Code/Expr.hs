@@ -20,7 +20,7 @@ data Expr = Add Expr Expr
 
           | Compare Expr Expr
 
-          | FunCall Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
+          | FunCallExpr Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
           | InputExpr
 
           | Not Expr
@@ -32,7 +32,7 @@ data Expr = Add Expr Expr
           | Lt Expr Expr
           | Gte Expr Expr
           | Lte Expr Expr
-  deriving Show
+  deriving (Show, Eq)
 
 -- These are the REPL commands
 data Command = Set Name Expr -- assign an expression to a variable name
@@ -46,7 +46,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Return Expr
   deriving Show
 
-data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input
+data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input | FunCall Name [Expr]
   deriving Eq
 
 instance Show Value where
@@ -85,7 +85,7 @@ eval vars (Concat x y)        = case (eval vars x, eval vars y) of
                                      (Just (StrVal a), Just (StrVal b)) -> Just (StrVal (a ++ b))
                                      _                                  -> Nothing
 eval vars (InputExpr)         = Just Input
-eval vars (FunCall name args) = case name of
+eval vars (FunCallExpr name args) = case name of
                                      "toString" -> toString args
                                        where toString :: [Expr] -> Maybe Value
                                              toString (intExpression:[])  = case eval vars intExpression of
@@ -100,6 +100,7 @@ eval vars (FunCall name args) = case name of
                                        where toFlt :: [Expr] -> Maybe Value
                                              toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
                                              toFlt _                      = Nothing
+                                     _          -> Just (FunCall name args)
 eval vars (Abs x)             = case eval vars x of
                                      Just (IntVal i) -> Just (IntVal (abs i))
                                      Just (FltVal f) -> Just (FltVal (abs f))
@@ -263,6 +264,8 @@ pStatement = (do s <- pIfStmt
                      return (s))
              ||| (do s <- pVoidFunCall
                      return (s))
+             ||| (do s <- pReturnStmt
+                     return (s))
 
 pStmtBlock :: Parser [Command]
 pStmtBlock = do symbol "{"
@@ -325,7 +328,7 @@ pReturnStmt = do string "return"
 pFunCall :: Parser Expr
 pFunCall = do name <- identifier
               args <- pFunCallArgs
-              return (FunCall name args)
+              return (FunCallExpr name args)
 
 pVoidFunCall :: Parser Command
 pVoidFunCall = do name <- identifier

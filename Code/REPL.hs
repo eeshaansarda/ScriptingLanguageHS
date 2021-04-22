@@ -61,11 +61,30 @@ process :: State -> Command -> InputT StateM State
 process st (Set var e) =
   do
     case eval (vars st) e of
-      Nothing -> return st
+      Nothing -> return st -- error
       Just Input -> do inpVal <- getInputLine ("Input > ")
                        case inpVal of
                          Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
                          Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
+      Just (FunCall name exprs) -> case fun of
+        [] -> return st
+        [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
+                                          then do sState <- assignValues scopedState vnames exprs
+                                                  (st', e) <- processBlockRet (sState, Nothing) commands
+                                                  case e of
+                                                    Just expression -> case eval (vars st') expression of
+                                                                        Just eval_res -> return st {vars = updateVars var eval_res (vars st)}
+                                                                        Nothing -> return st -- error
+                                                    Nothing -> return st -- error
+                                       else return st
+        where scopedState :: State
+              scopedState = st
+              fun :: [(Name, [Name], [Command])]
+              fun = filter (\(x, _, _) -> x == name) (functions st)
+              assignValues :: State -> [Name] -> [Expr] -> InputT StateM State
+              assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
+                                                    assignValues state' vs es
+              assignValues state []     []     = return state
       Just eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
@@ -120,6 +139,14 @@ processBlock st (cmd: [])   = do st' <- process st cmd
 processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
+
+processBlockRet :: (State, Maybe Expr) -> [Command] -> InputT StateM (State, Maybe Expr)
+processBlockRet (st, _) (Return e: _)   = return (st, Just e)
+processBlockRet (st, _) (cmd: [])   = do st' <- process st cmd
+                                         return (st', Nothing)
+processBlockRet (st, _) (cmd: cmds) = do st' <- process st cmd
+                                         processBlockRet (st', Nothing) cmds
+-- processBlockRet (st, _) _           = return st
 
 blockIsVoid :: [Command] -> Bool
 blockIsVoid []            = True
@@ -179,7 +206,7 @@ repl = do st <- lift get
                                                 lift $ put st {commands = lines text ++ commands st}
                                                 repl
                         (Fun name _ _)    -> do st' <- process st cmd
-                                                lift $ put st' {wordList = name : wordList st'}
+                                                lift $ put st' {wordList = (name ++ "(") : wordList st'}
                                                 repl
                         _ -> do st' <- process st cmd
                                 lift $ put st'
