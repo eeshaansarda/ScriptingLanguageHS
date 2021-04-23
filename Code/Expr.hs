@@ -133,6 +133,8 @@ eval vars expr = case expr of
   Gte e e2 -> boolOperations  vars expr
   Eq  e e2 -> boolOperations  vars expr
   Ne  e e2 -> boolOperations  vars expr
+  And e e2 -> andorBoolOp     vars expr
+  Or  e e2 -> andorBoolOp     vars expr
   Not e    -> notBoolOp       vars expr
   op        -> Left (ExprErr (show op) ("Unknown operations: " ++ show op))
 
@@ -190,6 +192,17 @@ notBoolOp vars (Not x) = case eval vars x of
   Right (BoolVal  a) -> Right (BoolVal (not a))
   Right not_bool -> Left (ExprErr "not" (show not_bool ++ " is not a boolean"))
   Left eval_err -> Left eval_err
+
+andorBoolOp :: BTree -> Expr -> Either EvalError Value
+andorBoolOp vars expr = case (eval vars x, eval vars y) of
+  (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (func a b) )
+  (Right a, Right b) -> Left (ExprErr "andorBoolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
+  (Right _, Left eval_err) -> Left eval_err
+  (Left eval_err, _) -> Left eval_err
+  where
+    (func, x, y) = case expr of
+      And expr1 expr2 -> ((&&), expr1, expr2)
+      Or  expr1 expr2 -> ((||), expr1, expr2)
 
 -- COMMAND AND EXPRESSION PARSER
 -- pCommand :: Parser Command
@@ -402,12 +415,6 @@ pCSVar ys = (do symbol ","
                 pCSVar (i:ys))
                ||| (do symbol ")"
                        return (reverse ys))
--- pCSVar :: [Name] -> Parser [Name]
--- pCSVar [] = do i <- identifier
-               -- return (i:[])
--- pCSVar ys = do symbol ","
-               -- i <- identifier
-               -- pCSVar (i:ys)
 
 -- TODO Sorry for the bad naming choice
 -- please search and replace if possible
@@ -436,6 +443,8 @@ pBoolFactor = (do e <- pExpr
                       symbol "<="
                       e2 <- pExpr
                       return (Lte e e2))
+              ||| (do e <- identifier
+                      return (Var e))
 
 pBoolFact :: Parser Expr
 pBoolFact = (do symbol "True"
@@ -448,7 +457,7 @@ pBoolFact = (do symbol "True"
                         f <- pBoolFact
                         return (Not f))
                 ||| (do symbol "("
-                        f <- pBoolFact
+                        f <- pBoolExpr
                         symbol ")"
                         return f)
 
