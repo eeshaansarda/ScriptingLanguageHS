@@ -2,7 +2,7 @@
 
 ## Run REPL
 
-Install the dependencies by running `cabal install` in the project directory, then start the repl using `cabal run`. The repl should now be open.
+Install the dependencies by and start the repl using `cabal run`. The repl should now be open.
 
 ## Syntax
 
