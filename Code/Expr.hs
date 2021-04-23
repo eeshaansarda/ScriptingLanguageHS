@@ -159,15 +159,6 @@ floatOperations vars expr = case (eval vars x, eval vars y) of
       Div expr1 expr2 -> ((/), expr1, expr2)
       Pow expr1 expr2 -> ((**), expr1, expr2)
 
-
-boolHelper :: Ord a => Expr -> a -> a -> Bool
-boolHelper (Lt expr1 expr2) = (<)
-boolHelper (Gt expr1 expr2) = (>)
-boolHelper (Lte expr1 expr2) = (<=)
-boolHelper (Gte expr1 expr2) = (>=)
-boolHelper (Eq expr1 expr2) = (==)
-boolHelper (Ne expr1 expr2) = (/=)
-
 boolOperations :: BTree -> Expr -> Either EvalError Value
 boolOperations vars expr = case (eval vars x, eval vars y) of
   (Right (StrVal  a), Right (StrVal  b)) -> Right (BoolVal (elem (compare a b) ordering))
