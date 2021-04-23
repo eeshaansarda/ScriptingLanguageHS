@@ -1,6 +1,6 @@
-import "mul.cls"
-import "cmp.cls"
-import "square.cls"
+import "test-programs/mul.cls"
+import "test-programs/cmp.cls"
+import "test-programs/square.cls"
 print("Hello! What is your name?")
 name = input
 print("Hi " ++ name)
