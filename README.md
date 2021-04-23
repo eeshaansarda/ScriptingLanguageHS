@@ -17,13 +17,13 @@
 
 ## Medium Requirements
 - [x] Implement binary search tree
-- [ ] Add command to read and process input files with commands
+- [x] Add command to read and process input files with commands
 - [ ] Implement better treatment of errors using Either type
 - [x] Implement functionality for if...then...else
 
 ## Hard Requirements
 - [x] Add Haskeline for command history
-  - [ ] Implement tab completion for commands and variable names
-- [ ] Add command for simple repetition
+  - [x] Implement tab completion for commands and variable names
+- [x] Add command for simple repetition
 - [x] Implement functionality for loop constructs
-- [ ] Allow defining and calling functions
+- [x] Allow defining and calling functions

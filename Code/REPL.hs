@@ -196,6 +196,8 @@ repl = do st <- lift get
                         (Fun name _ _)    -> do st' <- process st cmd
                                                 lift $ put st' {wordList = (name ++ "(") : wordList st'}
                                                 repl
+                        (Expr expr) -> do process st (Print expr)
+                                          repl
                         _ -> do st' <- process st cmd
                                 lift $ put st'
                                 repl

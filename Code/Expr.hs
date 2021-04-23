@@ -47,6 +47,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Fun Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
              | VoidFunCall Name [Expr]
              | Return Expr
+             | Expr Expr
   deriving Show
 
 data EvalError = ExprErr ExprName ErrMsg
@@ -309,6 +310,8 @@ pStatement = (do s <- pIfStmt
                      return (s))
              ||| (do s <- pReturnStmt
                      return (s))
+             ||| (do s <- pExpr_
+                     return (s))
 
 pStmtBlock :: Parser [Command]
 pStmtBlock = do symbol "{"
@@ -382,6 +385,9 @@ pFunCallArgs :: Parser [Expr]
 pFunCallArgs = do symbol "("
                   i <- (pCSExpressions [])
                   return (i)
+
+pExpr_ :: Parser Command
+pExpr_ = (do Expr <$> pExpr)
 
 -- Comma seperated expressions
 pCSExpressions :: [Expr] -> Parser [Expr]
