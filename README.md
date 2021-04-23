@@ -50,3 +50,9 @@ import (other) files
 ```
 import "cool.cls"
 ```
+
+## Testing
+For verbose output of quickcheck tests, run `cabal repl quickcheck-tests`, then load the quickcheck module with `:l QuickCheckTests`.
+Following this, you may run all the tests with `main` or `runTests`.
+Run each test individually with `quickCheck prop_*`.
+A full list of all property tests can be found by typing `prop_` and using the tab autocomplete feature.

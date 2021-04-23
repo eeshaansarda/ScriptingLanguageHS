@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+module QuickCheckTests where
 
 import REPL
 import Expr
 import Parsing
+import LangParser
 
 import System.Exit (exitFailure)
 import Test.QuickCheck
@@ -100,27 +102,27 @@ prop_parseConcat str1 str2 = case parse pExpr ("\"" ++ str1 ++ "\"" ++ "++" ++  
 -- Checks that eval converts ints to floats for Add
 prop_evalAddConvert :: Int -> Float -> Bool
 prop_evalAddConvert i f = case eval Leaf (Add (Val (IntVal i)) (Val(FltVal f))) of 
-                               Just (FltVal a) -> True 
+                               Right (FltVal a) -> True 
                                _               -> False
 
 -- Checks that eval converts ints to floats for Sub
 prop_evalSubConvert :: Int -> Float -> Bool
 prop_evalSubConvert i f = case eval Leaf (Sub (Val (IntVal i)) (Val(FltVal f))) of 
-                               Just (FltVal a) -> True 
+                               Right (FltVal a) -> True 
                                _               -> False
 
 -- Checks that eval converts ints to floats for Mul
 prop_evalMulConvert :: Int -> Float -> Bool
 prop_evalMulConvert i f = case eval Leaf (Mul (Val (IntVal i)) (Val(FltVal f))) of 
-                               Just (FltVal a) -> True 
+                               Right (FltVal a) -> True 
                                _               -> False
 
 -- Checks that eval always returns floats for Div
-prop_evalDivConvert :: Int -> Int -> Bool
-prop_evalDivConvert i1 i2 = if i2 == 0 then True else -- Need a better way to filter out divide by zero
-                            case eval Leaf (Div (Val (IntVal i1)) (Val (IntVal i2)) ) of 
-                                 Just (FltVal a) -> True 
-                                 _               -> False
+prop_evalDivConvert :: Int -> Float -> Bool
+prop_evalDivConvert i f = if f == 0.0 then True else -- Need a better way to filter out divide by zero
+                          case eval Leaf (Div (Val (IntVal i)) (Val (FltVal f)) ) of 
+                               Right (FltVal a) -> True 
+                               _                -> False
 
 return []
 runTests = $quickCheckAll

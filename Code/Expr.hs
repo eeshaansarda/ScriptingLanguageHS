@@ -50,6 +50,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
   deriving Show
 
 data EvalError = ExprErr ExprName ErrMsg
+  deriving Show
 
 data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input | FunCall Name [Expr]
   deriving Eq
