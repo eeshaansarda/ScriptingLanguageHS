@@ -2,7 +2,7 @@
 
 ## Run REPL
 
-Install the dependencies by and start the repl using `cabal run`. The repl should now be open.
+Install the dependencies and start the repl using `cabal run`. The repl should now be open.
 
 ## Syntax
 
@@ -14,9 +14,10 @@ name = "John Doe"
 
 Arithmetic Expressions
 ```
-1 + 2
-2 ^ 2
-19 % 2
+1 + 2     - Addition
+2 ^ 2     - Power
+19 % 2    - Modulo
+|-3.4|    - Absolute
 print (1 * 2 + 10)
 ```
 
@@ -46,7 +47,6 @@ fun double(x) { return x * 2 }
 ``` 
 
 import (other) files
-
 ```
 import "cool.cls"
 ```
