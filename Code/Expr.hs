@@ -387,7 +387,7 @@ pFunCallArgs = do symbol "("
                   return (i)
 
 pExpr_ :: Parser Command
-pExpr_ = (do Expr <$> pExpr)
+pExpr_ = (do Expr <$> pBoolExpr) ||| (do Expr <$> pExpr)
 
 -- Comma seperated expressions
 pCSExpressions :: [Expr] -> Parser [Expr]
