@@ -183,8 +183,8 @@ blockIsVoid (x: xs)       = blockIsVoid xs
 
 repl :: InputM ()
 repl = do st <- lift get
-          outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug message, to be removed in the future
-          outputStrLn ("Functions: " ++ show (functions st)) -- TODO: debug message, to be removed in the future
+          -- outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug message, to be removed in the future
+          -- outputStrLn ("Functions: " ++ show (functions st)) -- TODO: debug message, to be removed in the future
           inp <- case commands st of
             [] -> getInputLine ("> ")
             (x:xs) -> do lift $ put st {commands = xs}

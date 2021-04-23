@@ -94,12 +94,14 @@ eval vars (FunCallExpr name args) = case name of
                                                _               -> Nothing
                                      "toInt"    -> toInt args
                                        where toInt :: [Expr] -> Maybe Value
-                                             toInt ((Val (StrVal i)):[])  = Just (IntVal (read i))
-                                             toInt _                      = Nothing
+                                             toInt (strExpression:[])  = case eval vars strExpression of
+                                               Just (StrVal i) -> Just (IntVal (read i :: Int))
+                                               _               -> Nothing
                                      "toFloat"  -> toFlt args
                                        where toFlt :: [Expr] -> Maybe Value
-                                             toFlt ((Val (StrVal i)):[])  = Just (FltVal (read i))
-                                             toFlt _                      = Nothing
+                                             toFlt (strExpression:[])  = case eval vars strExpression of
+                                               Just (StrVal i) -> Just (FltVal (read i :: Float))
+                                               _               -> Nothing
                                      _          -> Just (FunCall name args)
 eval vars (Abs x)             = case eval vars x of
                                      Just (IntVal i) -> Just (IntVal (abs i))
