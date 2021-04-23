@@ -1,0 +1,19 @@
+print "T"
+print "h"
+print "i"
+print "s"
+print "i"
+print "s"
+print "a"
+print "t"
+print "e"
+print "s"
+print "t"
+print "!"
+e = 2
+print e
+e = 3
+print e
+
+import "test2.txt"
+r = 9
