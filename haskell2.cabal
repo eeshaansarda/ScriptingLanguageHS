@@ -38,7 +38,7 @@ executable Main
 
 test-suite quickcheck-tests
   type:           exitcode-stdio-1.0
-  main-is:        Test.hs
+  main-is:        QuickCheckTests.hs
   build-depends:
     base,
     haskeline,
