@@ -8,8 +8,8 @@ version:             0.1.0.0
 -- description:
 -- bug-reports:
 -- license:
-author:              Eeshaan Sarda
-maintainer:          sardaeeshaan@gmail.com
+author:              190001741, 200007779, 190022658
+-- maintainer:
 -- copyright:
 -- category:
 build-type:          Simple
@@ -25,7 +25,7 @@ executable temp
     haskeline
 
   -- Modules icluded in this executable, other than Main.
-  other-modules: REPL, Expr, Parsing, Test
+  other-modules: REPL, Expr, Parsing, Test, LangParser
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:

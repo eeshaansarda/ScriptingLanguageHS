@@ -2,6 +2,7 @@ module REPL where
 
 import System.Console.Haskeline
 import Expr
+import LangParser
 import Parsing
 import Control.Monad.IO.Class
 import Control.Monad.Trans (lift)
