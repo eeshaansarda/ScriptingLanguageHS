@@ -61,21 +61,24 @@ process :: State -> Command -> InputT StateM State
 process st (Set var e) =
   do
     case eval (vars st) e of
-      Nothing -> return st -- error
-      Just Input -> do inpVal <- getInputLine ("Input > ")
-                       case inpVal of
+      Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                      return st -- error
+      Right Input -> do inpVal <- getInputLine ("Input > ")
+                        case inpVal of
                          Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
                          Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
-      Just (FunCall name exprs) -> case fun of
+      Right (FunCall name exprs) -> case fun of
         [] -> return st
         [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
                                           then do sState <- assignValues scopedState vnames exprs
-                                                  (st', e) <- processBlockRet (sState, Nothing) commands
+                                                  (st', e) <- processBlockRet (sState, Left (ExprErr "TODO" "TODO")) commands
                                                   case e of
-                                                    Just expression -> case eval (vars st') expression of
-                                                                        Just eval_res -> return st {vars = updateVars var eval_res (vars st)}
-                                                                        Nothing -> return st -- error
-                                                    Nothing -> return st -- error
+                                                    Right expression -> case eval (vars st') expression of
+                                                                             Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
+                                                                             Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                                                                                             return st -- error
+                                                    Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                                                                    return st -- error
                                        else return st
         where scopedState :: State
               scopedState = st
@@ -85,35 +88,37 @@ process st (Set var e) =
               assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
                                                     assignValues state' vs es
               assignValues state []     []     = return state
-      Just eval_res -> do
+      Right eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
         return st'
 process st (Print e) =
   do
     case eval (vars st) e of
-      Nothing -> outputStrLn ("Invalid expression")
-      Just Input -> do inpVal <- getInputLine ("Input > ")
-                       case inpVal of
-                         Just inp -> outputStrLn inp
-                         Nothing -> outputStrLn ""
-      Just eval_res -> do
-        outputStrLn (show eval_res)
-    -- Print the result of evaluation
-    return st
+         Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                         return st
+         Right Input -> do inpVal <- getInputLine ("Input > ")
+                           case inpVal of
+                                Just inp -> do outputStrLn inp
+                                               return st
+                                Nothing -> do outputStrLn ""
+                                              return st
+         Right eval_res -> do
+           outputStrLn (show eval_res)
+           return st
 process st (If e b1 b2) = case eval (vars st) e of
-  Just (BoolVal True)  -> do st' <- processBlock st b1
-                             return st'
-  Just (BoolVal False) -> do st' <- processBlock st b2
-                             return st'
+  Right (BoolVal True)  -> do st' <- processBlock st b1
+                              return st'
+  Right (BoolVal False) -> do st' <- processBlock st b2
+                              return st'
   _                    -> do outputStrLn "Invalid boolean value"
                              return st
 process st (While e block) = loop st block e
   where loop :: State -> [Command] -> Expr -> InputT StateM State
         loop state cmds expr = case eval (vars state) expr of
-          Just (BoolVal True)  -> do st' <- processBlock state cmds
-                                     loop st' cmds expr
-          Just (BoolVal False) -> return state
+          Right (BoolVal True)  -> do st' <- processBlock state cmds
+                                      loop st' cmds expr
+          Right (BoolVal False) -> return state
           _                    -> do outputStrLn "Invalid boolean value"
                                      return state
 process st (Fun name vars commands) = return st {functions = updateFuns name vars commands (functions st)}
@@ -140,40 +145,18 @@ processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
 
-processBlockRet :: (State, Maybe Expr) -> [Command] -> InputT StateM (State, Maybe Expr)
-processBlockRet (st, _) (Return e: _)   = return (st, Just e)
+processBlockRet :: (State, Either EvalError Expr) -> [Command] -> InputT StateM (State, Either EvalError Expr)
+processBlockRet (st, _) (Return e: _)   = return (st, Right e)
 processBlockRet (st, _) (cmd: [])   = do st' <- process st cmd
-                                         return (st', Nothing)
+                                         return (st', Left (ExprErr "proessBlockRet" "TODO"))
 processBlockRet (st, _) (cmd: cmds) = do st' <- process st cmd
-                                         processBlockRet (st', Nothing) cmds
+                                         processBlockRet (st', Left (ExprErr "proessBlockRet" "TODO")) cmds
 -- processBlockRet (st, _) _           = return st
 
 blockIsVoid :: [Command] -> Bool
 blockIsVoid []            = True
 blockIsVoid (Return x: _) = False
 blockIsVoid (x: xs)       = blockIsVoid xs
-
--- processRepl :: State -> Command -> InputT IO ()
--- processRepl st (Set var e)  = do st' <- process st (Set var e)
---                                  repl st'
--- processRepl st (Print e)    = do st' <- process st (Print e)
---                                  repl st'
--- processRepl st (Quit)       = outputStrLn "Bye"
--- processRepl st (Import filepath) = do text <- liftIO (readFile filepath)
---                                       repl (st {commands = lines text ++ commands st})
--- processRepl st (If e b1 b2) = case eval (vars st) e of
---   Just (BoolVal True)  -> do st' <- processBlock st b1
---                              repl st'
---   Just (BoolVal False) -> do st' <- processBlock st b2
---                              repl st'
---   _                    -> outputStrLn "Invalid boolean value"
--- processRepl st (While e block) = loop st block e
---   where loop :: State -> [Command] -> Expr -> InputT IO ()
---         loop st cmds expr = case eval (vars st) expr of
---           Just (BoolVal True)  -> do st' <- processBlock st cmds
---                                      loop st' cmds expr
---           Just (BoolVal False) -> repl st
---           _                    -> outputStrLn "Invalid boolean value"
 
 
 -- Read, Eval, Print Loop
