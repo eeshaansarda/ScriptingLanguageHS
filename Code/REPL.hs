@@ -66,25 +66,10 @@ process st (Set var e) =
                        case inpVal of
                          Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
                          Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
-      Just (FunCall name exprs) -> case fun of
-        [] -> return st
-        [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
-                                          then do sState <- assignValues scopedState vnames exprs
-                                                  (st', e) <- processBlockRet (sState, Nothing) commands
-                                                  case e of
-                                                    Just expression -> case eval (vars st') expression of
-                                                                        Just eval_res -> return st {vars = updateVars var eval_res (vars st)}
-                                                                        Nothing -> return st -- error
-                                                    Nothing -> return st -- error
-                                       else return st
-        where scopedState :: State
-              scopedState = st
-              fun :: [(Name, [Name], [Command])]
-              fun = filter (\(x, _, _) -> x == name) (functions st)
-              assignValues :: State -> [Name] -> [Expr] -> InputT StateM State
-              assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                                    assignValues state' vs es
-              assignValues state []     []     = return state
+      Just (FunCall name exprs) -> do val <- funCallVal st name exprs
+                                      case val of
+                                        Just eval_res -> return st {vars = updateVars var eval_res (vars st)}
+                                        Nothing -> return st -- error
       Just eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
@@ -97,6 +82,10 @@ process st (Print e) =
                        case inpVal of
                          Just inp -> outputStrLn inp
                          Nothing -> outputStrLn ""
+      Just (FunCall name exprs) -> do val <- funCallVal st name exprs
+                                      case val of
+                                        Just eval_res -> outputStrLn (show eval_res) -- how will it show a string
+                                        Nothing -> outputStrLn "" -- error
       Just eval_res -> do
         outputStrLn (show eval_res)
     -- Print the result of evaluation
@@ -153,6 +142,24 @@ blockIsVoid []            = True
 blockIsVoid (Return x: _) = False
 blockIsVoid (x: xs)       = blockIsVoid xs
 
+funCallVal :: State -> Name -> [Expr] -> InputT StateM (Maybe Value)
+funCallVal st name exprs = case fun of
+        [] -> return Nothing -- TODO no function of name "name"
+        [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
+                                          then do sState <- assignValues scopedState vnames exprs
+                                                  (st', e) <- processBlockRet (sState, Nothing) commands
+                                                  case e of
+                                                    Just expression -> return (eval (vars st') expression)
+                                                    Nothing -> return Nothing
+                                       else return Nothing -- TODO the number of arguments doesnt match OR does not contain a return statement
+        where scopedState :: State
+              scopedState = st
+              fun :: [(Name, [Name], [Command])]
+              fun = filter (\(x, _, _) -> x == name) (functions st)
+              assignValues :: State -> [Name] -> [Expr] -> InputT StateM State
+              assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
+                                                    assignValues state' vs es
+              assignValues state []     []     = return state
 -- processRepl :: State -> Command -> InputT IO ()
 -- processRepl st (Set var e)  = do st' <- process st (Set var e)
 --                                  repl st'
