@@ -1,29 +1,58 @@
 # Haskell2
 
-## Basic Requirements
-- [x] Quit command
-- [x] Tracking system State
-- [x] Extend parser to support multi-digit numbers and whitespace around operators
-- [x] String concatenation
-- [x] Implement conversion between string to int functionality
-- [x] Implement command to read user input as string functionality
-  - [ ] Input has some bugs (print input)
+## Run REPL
 
-## Easy Requirements
-- [ ] Implement Quickcheck
-- [x] Implement functionality for abs, mod, and power
-- [x] Extend parser to support negative numbers
-- [x] Support floats
+Install the dependencies by and start the repl using `cabal run`. The repl should now be open.
 
-## Medium Requirements
-- [x] Implement binary search tree
-- [x] Add command to read and process input files with commands
-- [ ] Implement better treatment of errors using Either type
-- [x] Implement functionality for if...then...else
+## Syntax
 
-## Hard Requirements
-- [x] Add Haskeline for command history
-  - [x] Implement tab completion for commands and variable names
-- [x] Add command for simple repetition
-- [x] Implement functionality for loop constructs
-- [x] Allow defining and calling functions
+You can declare variables by
+``` 
+a = 1
+name = "John Doe"
+```
+
+Arithmetic Expressions
+```
+1 + 2
+2 ^ 2
+19 % 2
+print (1 * 2 + 10)
+```
+
+String operations
+```
+"This is " ++ "cool"
+print("a" ++ "wesom" ++ "e")
+```
+
+Conditional Statements
+```
+num = 19
+if(19%2 == 0) { print("Even") } else { print("Odd") }
+```
+
+Run loops using boolean expression
+``` 
+i = 1
+while (i <= 10) { print(i) i=i+1 }
+```
+
+Functions
+```
+fun sayHi() { print("hi!") }
+fun sayHiTo(name) { print("hi " ++ name) }
+fun double(x) { return x * 2 }
+``` 
+
+import (other) files
+
+```
+import "cool.cls"
+```
+
+## Testing
+For verbose output of quickcheck tests, run `cabal repl quickcheck-tests`, then load the quickcheck module with `:l QuickCheckTests`.
+Following this, you may run all the tests with `main` or `runTests`.
+Run each test individually with `quickCheck prop_*`.
+A full list of all property tests can be found by typing `prop_` and using the tab autocomplete feature.
