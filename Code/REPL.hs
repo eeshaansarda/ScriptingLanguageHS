@@ -67,12 +67,11 @@ process st (Set var e) =
                         case inpVal of
                          Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
                          Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
-      -- TODO: error message from here
       Right (FunCall name exprs) -> do val <- funCallVal st name exprs
-                                      case val of
+                                       case val of
                                         Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
-                                        Left -> return st -- TODO: no function of name "name" exist error
-      -- TODO: till here
+                                        Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                                                        return st -- error
       Right eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e
@@ -80,21 +79,18 @@ process st (Set var e) =
 process st (Print e) =
   do
     case eval (vars st) e of
-
          Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
          Right Input -> do inpVal <- getInputLine ("Input > ")
                            case inpVal of
                                 Just inp -> do outputStrLn inp
                                 Nothing -> do outputStrLn ""
-         -- TODO: Handle error below
          Right (FunCall name exprs) -> do val <- funCallVal st name exprs
                                           case val of
                                             Right eval_res -> outputStrLn (show eval_res) -- how will it show a string
-                                            Left -> outputStrLn "" -- error
-         -- TODO till here
+                                            Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
          Right eval_res -> do
            outputStrLn (show eval_res)
-         return st
+    return st
 
 process st (If e b1 b2) = case eval (vars st) e of
   Right (BoolVal True)  -> do st' <- processBlock st b1
@@ -138,9 +134,9 @@ processBlock st _           = return st
 processBlockRet :: (State, Either EvalError Expr) -> [Command] -> InputT StateM (State, Either EvalError Expr)
 processBlockRet (st, _) (Return e: _)   = return (st, Right e)
 processBlockRet (st, _) (cmd: [])   = do st' <- process st cmd
-                                         return (st', Left (ExprErr "proessBlockRet" "TODO"))
+                                         return (st', Left (ExprErr "Function call" "No return statement"))
 processBlockRet (st, _) (cmd: cmds) = do st' <- process st cmd
-                                         processBlockRet (st', Left (ExprErr "proessBlockRet" "TODO")) cmds
+                                         processBlockRet (st', Left (ExprErr "" "")) cmds
 -- processBlockRet (st, _) _           = return st
 
 blockIsVoid :: [Command] -> Bool
@@ -148,16 +144,17 @@ blockIsVoid []            = True
 blockIsVoid (Return x: _) = False
 blockIsVoid (x: xs)       = blockIsVoid xs
 
-funCallVal :: State -> Name -> [Expr] -> InputT StateM (Maybe Value)
+-- TODO: convert to either | Update Errors
+funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either EvalError Value)
 funCallVal st name exprs = case fun of
-        [] -> return Nothing -- TODO no function of name "name"
+        [] -> return (Left (ExprErr "Function call" "No such function"))
         [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
                                           then do sState <- assignValues scopedState vnames exprs
-                                                  (st', e) <- processBlockRet (sState, Nothing) commands
+                                                  (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
                                                   case e of
-                                                    Just expression -> return (eval (vars st') expression)
-                                                    Nothing -> return Nothing
-                                       else return Nothing -- TODO the number of arguments doesnt match OR does not contain a return statement
+                                                    Right expression -> return (eval (vars st') expression)
+                                                    Left (ExprErr op err_msg) -> return (Left (ExprErr op err_msg)) -- Should never happen
+                                       else return (Left (ExprErr "Function call" "Number of argument does not match or there is no return statement"))
         where scopedState :: State
               scopedState = st
               fun :: [(Name, [Name], [Command])]
