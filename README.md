@@ -44,3 +44,9 @@ fun sayHi() { print("hi!") }
 fun sayHiTo(name) { print("hi " ++ name) }
 fun double(x) { return x * 2 }
 ``` 
+
+import (other) files
+
+```
+import "cool.cls"
+```
