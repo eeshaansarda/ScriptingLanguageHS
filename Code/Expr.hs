@@ -103,12 +103,15 @@ eval vars (FunCallExpr name args) = case name of
                                      "toInt"    -> toInt args
 
                                        where toInt :: [Expr] -> Either EvalError Value
-                                             toInt ((Val (StrVal i)):[])  = Right (IntVal (read i :: Int))
-                                             toInt arg                      = Left (ExprErr "toInt" (show args ++ " cannot be converted to integer"))
+                                             toInt (strExpression:[])  = case eval vars strExpression of
+                                               Right (StrVal i) -> Right (IntVal (read i :: Int))
+                                               Right (FltVal i) -> Right (IntVal (round i))
+                                               _               ->  Left (ExprErr "toInt" (show args ++ " cannot be converted to integer"))
                                      "toFloat"  -> toFlt args
                                        where toFlt :: [Expr] -> Either EvalError Value
-                                             toFlt ((Val (StrVal i)):[])  = Right (FltVal (read i :: Float))
-                                             toFlt arg                      = Left (ExprErr "toFlt" (show args ++ " cannot be converted to float"))
+                                             toFlt (strExpression:[])  = case eval vars strExpression of
+                                               Right (StrVal i) -> Right (FltVal (read i :: Float))
+                                               _               ->  Left (ExprErr "toFlt" (show args ++ " cannot be converted to float"))
                                      _          -> Right (FunCall name args)
 
 eval vars (Abs x)             = case eval vars x of
